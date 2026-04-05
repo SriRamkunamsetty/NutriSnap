@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - height: number
+    //   - weight: number
+    //   - goal: string (enum: lose, maintain, gain)
+    //   - calorieLimit: number
+    //   - createdAt: timestamp
+    //
+    // Collection: scans
+    // Document ID: scanId
+    // Fields:
+    //   - userId: string (required)
+    //   - foodName: string (required)
+    //   - calories: number (required)
+    //   - protein: number
+    //   - carbs: number
+    //   - fats: number
+    //   - confidence: number
+    //   - imageUrl: string
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: users/{userId}/messages
+    // Document ID: messageId
+    // Fields:
+    //   - userId: string (required)
+    //   - role: string (required, enum: user, model)
+    //   - text: string (required)
+    //   - timestamp: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin' ||
+         (request.auth.token.email == "mohansriramkunamsetty@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^.+@.+\\..+$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             (data.get('displayName', null) == null || data.displayName is string) &&
+             (data.get('photoURL', null) == null || data.photoURL == "" || isValidUrl(data.photoURL)) &&
+             (data.get('height', null) == null || data.height is number) &&
+             (data.get('weight', null) == null || data.weight is number) &&
+             (data.get('bmi', null) == null || data.bmi is number) &&
+             (data.get('bodyType', null) == null || data.bodyType in ['lean', 'normal', 'obese', 'unknown']) &&
+             (data.get('fatEstimate', null) == null || data.fatEstimate is number) &&
+             (data.get('goal', null) == null || data.goal in ['lose', 'maintain', 'gain']) &&
+             (data.get('calorieLimit', null) == null || data.calorieLimit is number) &&
+             (data.get('createdAt', null) == null || data.createdAt is timestamp || data.createdAt is string) &&
+             (data.get('lastLoginAt', null) == null || data.lastLoginAt is timestamp || data.lastLoginAt is string) &&
+             (data.updatedAt is timestamp);
+    }
+
+    function isValidScan(data) {
+      return data.keys().hasAll(['userId', 'foodName', 'calories', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.foodName is string && data.foodName.size() > 0 && data.foodName.size() < 200 &&
+             data.calories is number && data.calories >= 0 &&
+             (data.get('protein', null) == null || data.protein is number) &&
+             (data.get('carbs', null) == null || data.carbs is number) &&
+             (data.get('fats', null) == null || data.fats is number) &&
+             (data.get('confidence', null) == null || data.confidence is number) &&
+             (data.get('imageUrl', null) == null || isValidUrl(data.imageUrl)) &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['userId', 'role', 'text', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.role in ['user', 'model'] &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidDailySummary(data) {
+      return data.keys().hasAll(['date', 'totalCalories', 'totalProtein', 'totalCarbs', 'totalFats']) &&
+             data.date is string &&
+             data.totalCalories is number &&
+             data.totalProtein is number &&
+             data.totalCarbs is number &&
+             data.totalFats is number;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
+    }
+
+    match /scans/{scanId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidScan(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidScan(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /users/{userId}/messages/{messageId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+      allow update: if isOwner(userId) && isValidMessage(request.resource.data);
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/daily_summary/{date} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidDailySummary(request.resource.data);
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

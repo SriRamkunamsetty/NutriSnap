@@ -1,0 +1,55 @@
+export type Goal = 'lose' | 'maintain' | 'gain';
+export type BodyType = 'lean' | 'normal' | 'obese' | 'unknown';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  height?: number;
+  weight?: number;
+  bmi?: number;
+  bodyType?: BodyType;
+  fatEstimate?: number;
+  goal?: Goal;
+  calorieLimit?: number;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface ScanResult {
+  id: string;
+  userId: string;
+  foodName: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  confidence: number;
+  imageUrl?: string;
+  timestamp: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  role: 'user' | 'model';
+  text: string;
+  timestamp: string;
+}
+
+export interface DailySummary {
+  date: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFats: number;
+}
+
+export interface DailyStats {
+  date: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+}
