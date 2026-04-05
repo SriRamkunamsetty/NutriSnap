@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Plus, History, TrendingUp, Search, Sparkles, Flame, Apple, Zap, Droplets, ChevronRight, X, Loader2 } from 'lucide-react';
+import { Camera, Plus, History, TrendingUp, Search, Sparkles, Flame, Apple, Zap, Droplets, ChevronRight, X, Loader2, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeFoodImage } from '../services/geminiService';
@@ -82,8 +82,18 @@ const HomeScreen: React.FC = () => {
           </h1>
           <p className="text-sm text-gray-400 font-medium tracking-tight">Your health journey continues.</p>
         </div>
-        <div className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-green-600 ios-shadow">
-          <Sparkles size={24} strokeWidth={2.5} />
+        <div className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap">
+          {profile?.photoURL ? (
+            <img 
+              src={profile.photoURL} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <User size={20} className="text-gray-400" />
+          )}
+          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
         </div>
       </div>
 

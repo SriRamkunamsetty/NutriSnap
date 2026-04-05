@@ -181,7 +181,6 @@ const SettingsScreen: React.FC = () => {
           </div>
         </div>
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">{formData.displayName}</h2>
           <p className="text-sm text-gray-400 font-medium tracking-tight">{auth.currentUser?.email}</p>
         </div>
         {!isEditing && (

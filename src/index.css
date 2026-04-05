@@ -21,16 +21,22 @@
   .ios-shadow {
     @apply shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)];
   }
+
+  .ios-tap {
+    @apply active:scale-[0.97] active:opacity-80 transition-all duration-200;
+  }
 }
 
 body {
   @apply bg-[#F8F9FB] text-gray-900 antialiased selection:bg-green-100 selection:text-green-900;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Smooth transitions for all interactive elements */
 * {
   @apply transition-all duration-300 ease-out;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Custom scrollbar for a cleaner look */

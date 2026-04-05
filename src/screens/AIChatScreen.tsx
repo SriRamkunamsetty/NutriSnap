@@ -71,25 +71,6 @@ const AIChatScreen: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-180px)] bg-transparent">
-      {/* Chat Header - Integrated into Layout but adding sub-header here */}
-      <div className="px-6 py-4 flex items-center justify-between bg-white/40 backdrop-blur-md border-b border-white/20 ios-shadow rounded-t-[32px]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-green-500/20">
-            <Sparkles size={20} strokeWidth={2.5} />
-          </div>
-          <div>
-            <h2 className="font-bold text-gray-900 tracking-tight">AI Nutritionist</h2>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Now</span>
-            </div>
-          </div>
-        </div>
-        <button className="w-8 h-8 rounded-full bg-white/50 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all">
-          <Info size={16} />
-        </button>
-      </div>
-
       {/* Messages Area */}
       <div 
         ref={scrollRef}

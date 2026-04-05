@@ -25,13 +25,6 @@ const HistoryScreen: React.FC = () => {
   return (
     <div className="space-y-10 pb-10">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">History</h1>
-          <div className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow">
-            <Filter size={20} />
-          </div>
-        </div>
-        
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} strokeWidth={2.5} />
@@ -42,6 +35,9 @@ const HistoryScreen: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full glass rounded-[24px] py-4 pl-14 pr-6 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all ios-shadow placeholder:text-gray-400"
           />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 glass rounded-xl flex items-center justify-center text-gray-400 ios-shadow">
+            <Filter size={16} />
+          </div>
         </div>
       </div>
 

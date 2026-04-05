@@ -16,12 +16,14 @@ const AnalyticsScreen: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Analytics</h1>
+      <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2 glass px-4 py-2 rounded-2xl ios-shadow">
           <Calendar size={16} className="text-green-600" strokeWidth={2.5} />
           <span className="text-xs font-bold text-gray-600">Today</span>
         </div>
+        <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap">
+          <TrendingUp size={20} />
+        </button>
       </div>
 
       {/* Main Stats Grid */}
