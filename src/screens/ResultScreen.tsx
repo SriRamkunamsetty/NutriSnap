@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Share2, Check, Flame, Beef, Wheat, Droplets, Info } from 'lucide-react';
+import { ChevronLeft, Share2, Check, Flame, Beef, Wheat, Droplets, Info, User, Dog, Fingerprint } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ScanResult } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
@@ -71,6 +71,28 @@ const ResultScreen: React.FC = () => {
 
   const personalizedTip = getPersonalizedTip();
 
+  const handleShare = async () => {
+    triggerHaptic(hapticPatterns.light);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `NutriSnap - ${scan.foodName}`,
+          text: `Check out my ${scan.foodName} scan on NutriSnap!`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        triggerHaptic(hapticPatterns.success);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   const macros = [
     { label: 'Protein', value: scan.protein, unit: 'g', icon: Beef, color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50/50' },
     { label: 'Carbs', value: scan.carbs, unit: 'g', icon: Wheat, color: 'bg-orange-500', textColor: 'text-orange-600', bgColor: 'bg-orange-50/50' },
@@ -80,7 +102,7 @@ const ResultScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-full pb-10">
       {/* Top Image Section */}
-      <div className="relative h-[420px] w-[calc(100%+2rem)] -mx-4 -mt-24 mb-12 overflow-hidden rounded-b-[180px] shadow-2xl">
+      <div className="relative h-[420px] w-[calc(100%+2rem)] -mx-4 -mt-24 mb-6 overflow-hidden rounded-b-[120px] shadow-2xl">
         <img 
           src={scan.imageUrl} 
           alt={scan.foodName} 
@@ -90,83 +112,104 @@ const ResultScreen: React.FC = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         
         <button 
-          onClick={() => navigate('/')}
-          className="absolute top-12 left-8 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 shadow-lg z-50"
+          onClick={() => {
+            triggerHaptic(hapticPatterns.light);
+            navigate('/');
+          }}
+          className="absolute top-32 left-8 w-12 h-12 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all border border-white/30 shadow-2xl z-50 active:scale-90"
         >
           <ChevronLeft size={24} strokeWidth={2.5} />
         </button>
         
         <button 
-          className="absolute top-12 right-8 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 shadow-lg z-50"
+          onClick={handleShare}
+          className="absolute top-32 right-8 w-12 h-12 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-all border border-white/30 shadow-2xl z-50 active:scale-90"
         >
           <Share2 size={20} strokeWidth={2.5} />
         </button>
 
-        <div className="absolute bottom-20 left-0 right-0 px-10">
+        <div className="absolute bottom-12 left-0 right-0 px-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center space-y-4"
+            className="text-center space-y-2"
           >
             <div className="flex items-center justify-center gap-3">
               <span className="bg-green-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-lg">
-                AI Verified
-              </span>
-              <span className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em]">
-                {new Date(scan.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                AI {(scan.type === 'food' || (scan.calories && scan.calories > 0)) ? 'Verified' : 'Detected'}
               </span>
             </div>
             
-            <h1 className="text-5xl font-black text-white tracking-tighter leading-tight drop-shadow-2xl">
+            <h1 className="text-4xl font-black text-white tracking-tighter leading-tight drop-shadow-2xl">
               {scan.foodName}
             </h1>
-
-            <div className="inline-flex items-center gap-3 glass text-white px-6 py-3 rounded-full font-black border border-white/20 shadow-xl">
-              <Flame size={20} className="text-orange-500" strokeWidth={3} />
-              <span className="text-xl">{scan.calories} <span className="text-xs text-white/60 uppercase tracking-widest">kcal</span></span>
-            </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="space-y-12">
-        {scan.type === 'food' ? (
-          <div className="space-y-8">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 text-center">Nutritional Breakdown</h3>
-            <div className="grid grid-cols-3 gap-4 px-1">
-              {macros.map((macro, idx) => (
-                <motion.div 
-                  key={macro.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="bg-white p-6 rounded-[45px] flex flex-col items-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-50"
-                >
-                  <div className={`${macro.color} w-14 h-14 rounded-[22px] flex items-center justify-center text-white shadow-lg`}>
-                    <macro.icon size={28} strokeWidth={2.5} />
-                  </div>
-                  <div className="text-center space-y-1">
-                    <p className="text-2xl font-black text-gray-900 tracking-tight">
-                      {macro.value}<span className="text-xs ml-0.5 font-bold text-gray-400">{macro.unit}</span>
-                    </p>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{macro.label}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+      {/* Quick Stats Bar - Directly below image */}
+      {(scan.type === 'food' || (scan.calories && scan.calories > 0)) ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card mx-2 mb-10 p-6 rounded-[40px] flex items-center justify-around ios-shadow border-white/50"
+        >
+          <div className="text-center">
+            <p className="text-2xl font-black text-gray-900 tracking-tight">{scan.calories}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Calories</p>
           </div>
-        ) : (
-          <div className="space-y-8">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 text-center">AI Recognition Details</h3>
-            <div className="glass-card p-10 rounded-[48px] ios-shadow bg-white/50 border border-white/50">
-              <p className="text-gray-700 leading-relaxed font-medium text-xl text-center">
-                {scan.description || `This is identified as a ${scan.type}.`}
-              </p>
-            </div>
+          <div className="w-px h-8 bg-gray-100" />
+          <div className="text-center">
+            <p className="text-2xl font-black text-blue-600 tracking-tight">{scan.protein}g</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Protein</p>
           </div>
-        )}
+          <div className="w-px h-8 bg-gray-100" />
+          <div className="text-center">
+            <p className="text-2xl font-black text-orange-600 tracking-tight">{scan.carbs}g</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Carbs</p>
+          </div>
+          <div className="w-px h-8 bg-gray-100" />
+          <div className="text-center">
+            <p className="text-2xl font-black text-purple-600 tracking-tight">{scan.fats}g</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Fats</p>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card mx-2 mb-10 p-6 rounded-[40px] flex items-center justify-around ios-shadow border-white/50"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600">
+              {scan.type === 'person' ? <User size={20} /> : scan.type === 'animal' ? <Dog size={20} /> : <Fingerprint size={20} />}
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Category</p>
+            <p className="text-sm font-bold text-gray-900 capitalize">{scan.type}</p>
+          </div>
+          <div className="w-px h-12 bg-gray-100" />
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600">
+              <Check size={20} />
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">
+              {scan.type === 'person' ? 'Gender' : scan.type === 'animal' ? 'Species' : 'Details'}
+            </p>
+            <p className="text-sm font-bold text-gray-900 capitalize">{scan.details || 'Unknown'}</p>
+          </div>
+          <div className="w-px h-12 bg-gray-100" />
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-600">
+              <Flame size={20} />
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">Confidence</p>
+            <p className="text-sm font-bold text-gray-900">{Math.round((scan.confidence || 0) * 100)}%</p>
+          </div>
+        </motion.div>
+      )}
 
+      {/* Content Section */}
+      <div className="space-y-10">
         <div className="glass-card p-10 rounded-[48px] ios-shadow space-y-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
             <Check size={120} className="text-green-600" />
@@ -177,8 +220,8 @@ const ResultScreen: React.FC = () => {
             </div>
             <h3 className="text-xl font-bold tracking-tight">AI Insight</h3>
           </div>
-          <p className="text-gray-600 leading-relaxed font-medium relative z-10 text-lg">
-            {scan.type === 'food' ? (
+          <div className="text-gray-600 leading-relaxed font-medium relative z-10 text-lg">
+            {(scan.type === 'food' || (scan.calories && scan.calories > 0)) ? (
               <>
                 <span className="block mb-2">
                   This meal is {scan.protein > 20 ? 'excellent for muscle recovery due to its high protein content' : 'a balanced choice for your daily intake'}. 
@@ -191,11 +234,20 @@ const ResultScreen: React.FC = () => {
                 )}
               </>
             ) : (
-              <>
-                Our AI has identified this as a {scan.type}. NutriSnap is primarily designed for food tracking, but we can recognize other objects to help you organize your gallery.
-              </>
+              <div className="space-y-4">
+                <p>
+                  Our AI has identified this as a <span className="text-green-600 font-bold capitalize">{scan.type}</span>. 
+                  {scan.type === 'person' ? ` It appears to be a ${scan.details}.` : scan.type === 'animal' ? ` It appears to be a ${scan.details}.` : ''}
+                </p>
+                <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 italic text-base">
+                  "{scan.description}"
+                </div>
+                <p className="text-sm text-gray-400">
+                  NutriSnap is primarily designed for food tracking, but we can recognize other objects to help you organize your gallery.
+                </p>
+              </div>
             )}
-          </p>
+          </div>
         </div>
 
         <button 

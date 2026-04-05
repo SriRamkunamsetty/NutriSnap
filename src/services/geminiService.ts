@@ -18,7 +18,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
             },
           },
           {
-            text: "Analyze this image. First, determine if it's a food item, a person, or an animal. If it's a person, identify if it's a male or female. If it's an animal, identify the species. If it's food, provide a detailed nutritional breakdown. Return as JSON with: foodName (the name of the object), type ('food', 'person', 'animal', or 'other'), description (a brief summary of what you see), estimated calories, protein (g), carbs (g), fats (g), and your confidence level (0-1). For non-food items, set nutritional values to 0.",
+            text: "Analyze this image. First, determine if it's a food item (anything edible), a person, or an animal. If it's a person, identify if it's a male or female. If it's an animal, identify the species. If it's food, provide a detailed nutritional breakdown. Return as JSON with: foodName (the name of the object), type ('food', 'person', 'animal', or 'other'), details (gender for person, species for animal, or specific food type), description (a brief summary of what you see), estimated calories, protein (g), carbs (g), fats (g), and your confidence level (0-1). IMPORTANT: If the item is edible, ALWAYS set type to 'food'. For non-food items, set nutritional values to 0.",
           },
         ],
       },
@@ -30,6 +30,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
         properties: {
           foodName: { type: Type.STRING },
           type: { type: Type.STRING, enum: ["food", "person", "animal", "other"] },
+          details: { type: Type.STRING },
           description: { type: Type.STRING },
           calories: { type: Type.NUMBER },
           protein: { type: Type.NUMBER },
@@ -37,7 +38,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
           fats: { type: Type.NUMBER },
           confidence: { type: Type.NUMBER },
         },
-        required: ["foodName", "type", "description", "calories", "protein", "carbs", "fats", "confidence"],
+        required: ["foodName", "type", "details", "description", "calories", "protein", "carbs", "fats", "confidence"],
       },
     },
   });

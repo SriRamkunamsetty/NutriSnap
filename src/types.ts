@@ -23,6 +23,7 @@ export interface ScanResult {
   foodName: string;
   type?: 'food' | 'person' | 'animal' | 'other';
   description?: string;
+  details?: string;
   calories: number;
   protein: number;
   carbs: number;

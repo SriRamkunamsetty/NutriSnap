@@ -75,6 +75,7 @@ const HomeScreen: React.FC = () => {
           const scanData: Omit<ScanResult, 'id' | 'userId' | 'timestamp'> = {
             foodName: result.foodName,
             type: result.type as any || 'food',
+            details: result.details,
             description: result.description,
             calories: result.calories || 0,
             protein: result.protein || 0,
@@ -197,7 +198,7 @@ const HomeScreen: React.FC = () => {
           </div>
           <div className="text-left">
             <p className="font-bold text-lg tracking-tight">Scan Meal</p>
-            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">AI Vision</p>
+            <p className="text-white/60 text-[8px] font-black uppercase tracking-widest mt-1">Powered by Gemini 3.1 Pro</p>
           </div>
         </button>
         <input 

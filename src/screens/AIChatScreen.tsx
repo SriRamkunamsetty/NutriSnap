@@ -70,12 +70,18 @@ const AIChatScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] bg-transparent">
+    <div className="flex flex-col h-[calc(100vh-110px)] bg-transparent">
       {/* Messages Area */}
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar"
       >
+        <div className="flex justify-center mb-4">
+          <div className="glass px-4 py-1.5 rounded-full flex items-center gap-2 border border-white/50 shadow-sm">
+            <Sparkles size={12} className="text-green-500" />
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Powered by Gemini 3.1 Pro</span>
+          </div>
+        </div>
         {messages.map((msg) => (
           <motion.div 
             key={msg.id}
@@ -115,7 +121,7 @@ const AIChatScreen: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-6">
+      <div className="px-6 pb-4 pt-2">
         <form 
           onSubmit={handleSend}
           className="relative flex items-center"

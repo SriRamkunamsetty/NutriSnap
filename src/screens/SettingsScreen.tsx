@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2 } from 'lucide-react';
+import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
 import { saveUserProfile, uploadProfileImage } from '../services/storageService';
@@ -280,12 +280,19 @@ const SettingsScreen: React.FC = () => {
             <Loader2 size={20} className="animate-spin text-green-600" />
           ) : (
             <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">
-              <Camera size={18} strokeWidth={2.5} />
+              <Sparkles size={18} strokeWidth={2.5} />
             </div>
           )}
-          <span className="tracking-tight">
-            {isAnalyzing ? 'AI is Analyzing Body...' : 'AI Body Scan'}
-          </span>
+          <div className="flex flex-col items-start">
+            <span className="tracking-tight leading-none">
+              {isAnalyzing ? 'AI is Analyzing Body...' : 'AI Body Scan'}
+            </span>
+            {!isAnalyzing && (
+              <span className="text-[8px] font-black uppercase tracking-widest text-green-500/60 mt-1">
+                Powered by Gemini 3.1 Pro
+              </span>
+            )}
+          </div>
         </button>
         <input type="file" ref={bodyInputRef} onChange={handleBodyImageChange} accept="image/*" className="hidden" />
       </div>

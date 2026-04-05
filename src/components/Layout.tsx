@@ -144,8 +144,8 @@ const Layout: React.FC = () => {
       </main>
 
       {/* Floating Pill Navigation - Liquid Glass Style */}
-      <div className="fixed bottom-8 left-0 right-0 z-50 px-6 pointer-events-none">
-        <nav className="max-w-sm mx-auto glass rounded-full p-1.5 flex justify-around items-center pointer-events-auto ios-shadow relative h-16">
+      <div className="fixed bottom-8 left-0 right-0 z-50 px-8 pointer-events-none">
+        <nav className="max-w-[320px] mx-auto bg-white/40 backdrop-blur-2xl rounded-[32px] p-1 flex justify-around items-center pointer-events-auto border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] relative h-14">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -153,7 +153,7 @@ const Layout: React.FC = () => {
               onClick={() => triggerHaptic(hapticPatterns.light)}
               className={({ isActive }) =>
                 cn(
-                  "relative flex flex-col items-center justify-center w-14 h-12 rounded-2xl transition-all duration-500 ease-out ios-tap",
+                  "relative flex items-center justify-center w-12 h-10 rounded-2xl transition-colors duration-300 ease-out ios-tap",
                   isActive ? "text-green-600" : "text-gray-400 hover:text-gray-600"
                 )
               }
@@ -162,18 +162,18 @@ const Layout: React.FC = () => {
                 <>
                   {isActive && (
                     <motion.div
-                      layoutId="active-pill"
-                      className="absolute inset-0 bg-green-500/10 rounded-2xl"
+                      layoutId="liquid-pill"
+                      className="absolute inset-0 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] rounded-xl"
                       transition={{ 
                         type: "spring", 
-                        stiffness: 380, 
-                        damping: 30,
-                        mass: 1
+                        stiffness: 400, 
+                        damping: 32,
+                        mass: 0.8
                       }}
                     />
                   )}
                   <item.icon 
-                    size={22} 
+                    size={20} 
                     strokeWidth={isActive ? 2.5 : 2} 
                     className="relative z-10"
                   />
