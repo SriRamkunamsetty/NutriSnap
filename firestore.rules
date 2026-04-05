@@ -66,7 +66,11 @@ service cloud.firestore {
     }
 
     function isValidUrl(url) {
-      return url is string && (url.matches("^https://.*") || url.matches("^http://.*") || url.matches("^data:image/.*"));
+      return url is string && (
+        url.matches("^https://.*") || 
+        url.matches("^http://.*") || 
+        (url.size() >= 11 && url[0:11] == "data:image/")
+      );
     }
 
     // ===============================================================

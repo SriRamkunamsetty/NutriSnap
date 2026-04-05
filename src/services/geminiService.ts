@@ -4,7 +4,7 @@ import { ScanResult } from "../types";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 export const analyzeFoodImage = async (base64Image: string, mimeType: string): Promise<Partial<ScanResult>> => {
-  const model = "gemini-3.1-pro-preview"; // Using the requested model for image understanding
+  const model = "gemini-3.1-pro-preview";
   
   const response = await ai.models.generateContent({
     model,
@@ -18,7 +18,7 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
             },
           },
           {
-            text: "Analyze this food image. Identify the food item and provide a detailed nutritional breakdown. Include: foodName, estimated calories, protein (g), carbs (g), fats (g), and your confidence level (0-1). Be as accurate as possible for nutritional estimation.",
+            text: "Analyze this image. First, determine if it's a food item, a person, or an animal. If it's a person, identify if it's a male or female. If it's an animal, identify the species. If it's food, provide a detailed nutritional breakdown. Return as JSON with: foodName (the name of the object), type ('food', 'person', 'animal', or 'other'), description (a brief summary of what you see), estimated calories, protein (g), carbs (g), fats (g), and your confidence level (0-1). For non-food items, set nutritional values to 0.",
           },
         ],
       },
@@ -29,13 +29,15 @@ export const analyzeFoodImage = async (base64Image: string, mimeType: string): P
         type: Type.OBJECT,
         properties: {
           foodName: { type: Type.STRING },
+          type: { type: Type.STRING, enum: ["food", "person", "animal", "other"] },
+          description: { type: Type.STRING },
           calories: { type: Type.NUMBER },
           protein: { type: Type.NUMBER },
           carbs: { type: Type.NUMBER },
           fats: { type: Type.NUMBER },
           confidence: { type: Type.NUMBER },
         },
-        required: ["foodName", "calories", "protein", "carbs", "fats", "confidence"],
+        required: ["foodName", "type", "description", "calories", "protein", "carbs", "fats", "confidence"],
       },
     },
   });

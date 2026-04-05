@@ -10,7 +10,7 @@ const ResultScreen: React.FC = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
-  const { scans } = useUser();
+  const { scans, profile, dailySummary } = useUser();
   
   const scan = (state?.scan as ScanResult) || scans.find(s => s.id === id);
 
@@ -34,6 +34,43 @@ const ResultScreen: React.FC = () => {
     );
   }
 
+  const getPersonalizedTip = () => {
+    if (!profile || !dailySummary || scan.type !== 'food') return null;
+
+    const remainingCalories = profile.calorieLimit - dailySummary.totalCalories;
+    const isOverLimit = remainingCalories < 0;
+    
+    let tip = "";
+
+    if (profile.goal === 'lose') {
+      if (scan.calories > 600) {
+        tip = "This is a heavy meal for weight loss. Try to keep your next meal under 300 calories.";
+      } else if (scan.protein > 20) {
+        tip = "Great choice! High protein helps maintain muscle while losing fat.";
+      } else {
+        tip = "Good portion control. Remember to stay hydrated!";
+      }
+    } else if (profile.goal === 'gain') {
+      if (scan.protein < 15) {
+        tip = "You need more protein to build muscle. Consider adding a protein shake.";
+      } else if (scan.calories < 400) {
+        tip = "This is a light meal. You might need a snack later to reach your surplus goal.";
+      } else {
+        tip = "Excellent calorie density for your bulking goal!";
+      }
+    }
+
+    if (isOverLimit) {
+      tip += " You've exceeded your daily limit, so focus on light activity like walking tonight.";
+    } else if (remainingCalories < 200) {
+      tip += " You're almost at your limit for today. Choose your next snack wisely!";
+    }
+
+    return tip;
+  };
+
+  const personalizedTip = getPersonalizedTip();
+
   const macros = [
     { label: 'Protein', value: scan.protein, unit: 'g', icon: Beef, color: 'bg-blue-500', textColor: 'text-blue-600', bgColor: 'bg-blue-50/50' },
     { label: 'Carbs', value: scan.carbs, unit: 'g', icon: Wheat, color: 'bg-orange-500', textColor: 'text-orange-600', bgColor: 'bg-orange-50/50' },
@@ -43,83 +80,92 @@ const ResultScreen: React.FC = () => {
   return (
     <div className="flex flex-col min-h-full pb-10">
       {/* Top Image Section */}
-      <div className="relative h-[480px] w-full -mx-6 -mt-6 mb-10 overflow-hidden rounded-b-[60px] ios-shadow">
+      <div className="relative h-[420px] w-[calc(100%+2rem)] -mx-4 -mt-24 mb-12 overflow-hidden rounded-b-[180px] shadow-2xl">
         <img 
           src={scan.imageUrl} 
           alt={scan.foodName} 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         
         <button 
           onClick={() => navigate('/')}
-          className="absolute top-8 left-8 w-12 h-12 glass rounded-2xl flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 ios-shadow"
+          className="absolute top-12 left-8 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 shadow-lg z-50"
         >
           <ChevronLeft size={24} strokeWidth={2.5} />
         </button>
         
         <button 
-          className="absolute top-8 right-8 w-12 h-12 glass rounded-2xl flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 ios-shadow"
+          className="absolute top-12 right-8 w-12 h-12 glass rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all border border-white/20 shadow-lg z-50"
         >
           <Share2 size={20} strokeWidth={2.5} />
         </button>
 
-        <div className="absolute bottom-16 left-10 right-10">
+        <div className="absolute bottom-20 left-0 right-0 px-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-5"
+            className="text-center space-y-4"
           >
-            <div className="flex items-center gap-3">
-              <span className="bg-green-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-xl shadow-green-500/30">
+            <div className="flex items-center justify-center gap-3">
+              <span className="bg-green-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-lg">
                 AI Verified
               </span>
-              <span className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">
+              <span className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em]">
                 {new Date(scan.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
               </span>
             </div>
             
-            <div className="flex items-end justify-between gap-6">
-              <h1 className="text-5xl font-black text-white tracking-tighter leading-none flex-1">
-                {scan.foodName}
-              </h1>
-              <div className="glass text-white px-8 py-4 rounded-[32px] font-black shadow-2xl flex items-center gap-3 flex-shrink-0 border border-white/20">
-                <Flame size={24} className="text-orange-500" strokeWidth={2.5} />
-                <div className="flex flex-col leading-none">
-                  <span className="text-2xl">{scan.calories}</span>
-                  <span className="text-[10px] font-black text-white/60 uppercase tracking-widest mt-1">kcal</span>
-                </div>
-              </div>
+            <h1 className="text-5xl font-black text-white tracking-tighter leading-tight drop-shadow-2xl">
+              {scan.foodName}
+            </h1>
+
+            <div className="inline-flex items-center gap-3 glass text-white px-6 py-3 rounded-full font-black border border-white/20 shadow-xl">
+              <Flame size={20} className="text-orange-500" strokeWidth={3} />
+              <span className="text-xl">{scan.calories} <span className="text-xs text-white/60 uppercase tracking-widest">kcal</span></span>
             </div>
           </motion.div>
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="space-y-10">
-        <div className="space-y-6">
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 px-2">Nutritional Breakdown</h3>
-          <div className="grid grid-cols-3 gap-4">
-            {macros.map((macro, idx) => (
-              <motion.div 
-                key={macro.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.1 }}
-                className={`glass-card p-6 rounded-[40px] flex flex-col items-center gap-4 border border-white/50 ios-shadow`}
-              >
-                <div className={`${macro.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl`}>
-                  <macro.icon size={28} strokeWidth={2.5} />
-                </div>
-                <div className="text-center space-y-1">
-                  <p className={`text-2xl font-black text-gray-900 tracking-tight`}>{macro.value}<span className="text-xs ml-0.5 font-bold text-gray-400">{macro.unit}</span></p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{macro.label}</p>
-                </div>
-              </motion.div>
-            ))}
+      <div className="space-y-12">
+        {scan.type === 'food' ? (
+          <div className="space-y-8">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 text-center">Nutritional Breakdown</h3>
+            <div className="grid grid-cols-3 gap-4 px-1">
+              {macros.map((macro, idx) => (
+                <motion.div 
+                  key={macro.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="bg-white p-6 rounded-[45px] flex flex-col items-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-50"
+                >
+                  <div className={`${macro.color} w-14 h-14 rounded-[22px] flex items-center justify-center text-white shadow-lg`}>
+                    <macro.icon size={28} strokeWidth={2.5} />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-2xl font-black text-gray-900 tracking-tight">
+                      {macro.value}<span className="text-xs ml-0.5 font-bold text-gray-400">{macro.unit}</span>
+                    </p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{macro.label}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-8">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 text-center">AI Recognition Details</h3>
+            <div className="glass-card p-10 rounded-[48px] ios-shadow bg-white/50 border border-white/50">
+              <p className="text-gray-700 leading-relaxed font-medium text-xl text-center">
+                {scan.description || `This is identified as a ${scan.type}.`}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="glass-card p-10 rounded-[48px] ios-shadow space-y-6 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
@@ -129,11 +175,26 @@ const ResultScreen: React.FC = () => {
             <div className="w-10 h-10 bg-green-500/10 rounded-2xl flex items-center justify-center text-green-600">
               <Check size={20} strokeWidth={2.5} />
             </div>
-            <h3 className="text-xl font-bold tracking-tight">AI Health Insight</h3>
+            <h3 className="text-xl font-bold tracking-tight">AI Insight</h3>
           </div>
           <p className="text-gray-600 leading-relaxed font-medium relative z-10 text-lg">
-            This meal is {scan.protein > 20 ? 'excellent for muscle recovery due to its high protein content' : 'a balanced choice for your daily intake'}. 
-            {scan.calories > 800 ? ' It is quite calorie-dense, so consider balancing your next meal with lighter options.' : ' It fits perfectly within your daily calorie budget.'}
+            {scan.type === 'food' ? (
+              <>
+                <span className="block mb-2">
+                  This meal is {scan.protein > 20 ? 'excellent for muscle recovery due to its high protein content' : 'a balanced choice for your daily intake'}. 
+                  {scan.calories > 800 ? ' It is quite calorie-dense, so consider balancing your next meal with lighter options.' : ' It fits perfectly within your daily calorie budget.'}
+                </span>
+                {personalizedTip && (
+                  <span className="block p-4 bg-green-50/50 rounded-2xl border border-green-100 text-green-800 text-base italic">
+                    💡 Tip: {personalizedTip}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                Our AI has identified this as a {scan.type}. NutriSnap is primarily designed for food tracking, but we can recognize other objects to help you organize your gallery.
+              </>
+            )}
           </p>
         </div>
 

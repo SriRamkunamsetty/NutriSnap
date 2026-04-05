@@ -25,10 +25,21 @@ const Layout: React.FC = () => {
   const title = titles[location.pathname] || '';
 
   const { scrollY } = useScroll();
-  const headerBgOpacity = useTransform(scrollY, [20, 60], [0, 0.8]);
-  const headerBorderOpacity = useTransform(scrollY, [20, 60], [0, 0.5]);
-  const headerOpacity = useTransform(scrollY, [20, 60], [0, 1]);
-  const headerY = useTransform(scrollY, [20, 60], [10, 0]);
+  
+  // Header (Small Title) transforms
+  const headerBgOpacity = useTransform(scrollY, [40, 80], [0, 0.8]);
+  const headerBorderOpacity = useTransform(scrollY, [40, 80], [0, 0.5]);
+  const headerTitleOpacity = useTransform(scrollY, [60, 90], [0, 1]);
+  const headerTitleY = useTransform(scrollY, [60, 90], [10, 0]);
+
+  // Content (Large Title) transforms
+  const largeTitleOpacity = useTransform(scrollY, [0, 50], [1, 0]);
+  const largeTitleScale = useTransform(scrollY, [0, 50], [1, 0.95]);
+  const largeTitleY = useTransform(scrollY, [0, 50], [0, -10]);
+
+  const headerBgColor = useTransform(headerBgOpacity, (o) => `rgba(248, 249, 251, ${o})`);
+  const headerBorderColor = useTransform(headerBorderOpacity, (o) => `rgba(243, 244, 246, ${o})`);
+  const headerBlur = useTransform(headerBgOpacity, (o) => `blur(${o * 12}px)`);
 
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
@@ -48,25 +59,36 @@ const Layout: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             style={{ 
-              backgroundColor: useTransform(headerBgOpacity, (o) => `rgba(248, 249, 251, ${o})`),
-              borderBottomColor: useTransform(headerBorderOpacity, (o) => `rgba(243, 244, 246, ${o})`),
-              backdropFilter: useTransform(headerBgOpacity, (o) => `blur(${o * 12}px)`)
+              backgroundColor: headerBgColor,
+              borderBottomColor: headerBorderColor,
+              backdropFilter: headerBlur
             }}
-            className="px-6 py-4 flex items-center justify-between sticky top-0 z-40 border-b"
+            className="px-6 py-2 flex items-center justify-between sticky top-0 z-40 border-b"
           >
             <div className="flex items-center gap-3">
               <motion.div 
-                style={{ opacity: headerOpacity, y: headerY }}
+                style={{ opacity: headerTitleOpacity, y: headerTitleY }}
                 className="flex items-center gap-2"
               >
                 <div className="w-8 h-8 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/20">
                   <span className="text-white font-bold text-lg tracking-tighter">N</span>
                 </div>
-                <h1 className="text-lg font-bold text-gray-900 tracking-tight">{title}</h1>
+                <AnimatePresence mode="wait">
+                  <motion.h1 
+                    key={title}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-lg font-bold text-gray-900 tracking-tight"
+                  >
+                    {title}
+                  </motion.h1>
+                </AnimatePresence>
               </motion.div>
             </div>
             <motion.div 
-              style={{ opacity: headerOpacity }}
+              style={{ opacity: headerTitleOpacity }}
               className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
             >
               {profile?.photoURL ? (
@@ -86,22 +108,38 @@ const Layout: React.FC = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className={cn("flex-1 pb-32", !isHome && "pt-4")}>
-        <div className="max-w-md mx-auto w-full px-4">
+      <main className={cn("flex-1 pb-32", isHome ? "pt-4" : "pt-2")}>
+        <div className="max-w-md mx-auto w-full px-4 overflow-x-hidden">
           <AnimatePresence mode="wait">
             {!isHome && title && (
               <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 20 }}
+                key={`title-${location.pathname}`}
+                style={{ 
+                  opacity: largeTitleOpacity, 
+                  scale: largeTitleScale, 
+                  y: largeTitleY 
+                }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="mb-8 px-2"
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-2 px-2 relative z-10"
               >
-                <h2 className="text-4xl font-black text-gray-900 tracking-tighter">{title}</h2>
+                <h2 className="text-5xl font-black text-gray-900 tracking-tighter">{title}</h2>
               </motion.div>
             )}
           </AnimatePresence>
-          <Outlet />
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
 

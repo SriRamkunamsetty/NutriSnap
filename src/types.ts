@@ -21,6 +21,8 @@ export interface ScanResult {
   id: string;
   userId: string;
   foodName: string;
+  type?: 'food' | 'person' | 'animal' | 'other';
+  description?: string;
   calories: number;
   protein: number;
   carbs: number;

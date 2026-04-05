@@ -20,6 +20,7 @@ const SettingsScreen: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
   
@@ -35,9 +36,11 @@ const SettingsScreen: React.FC = () => {
     fatEstimate: 0
   });
 
+  const [initialData, setInitialData] = useState(formData);
+
   useEffect(() => {
     if (profile) {
-      setFormData({
+      const data = {
         height: profile.height || 175,
         weight: profile.weight || 70,
         goal: profile.goal || 'maintain',
@@ -47,9 +50,16 @@ const SettingsScreen: React.FC = () => {
         bmi: profile.bmi || 22.9,
         bodyType: profile.bodyType || 'unknown',
         fatEstimate: profile.fatEstimate || 0
-      });
+      };
+      setFormData(data);
+      setInitialData(data);
     }
   }, [profile]);
+
+  useEffect(() => {
+    const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialData);
+    setIsDirty(hasChanges);
+  }, [formData, initialData]);
 
   const calculateBMI = (h: number, w: number) => {
     if (!h || !w) return 0;
@@ -184,12 +194,18 @@ const SettingsScreen: React.FC = () => {
           <p className="text-sm text-gray-400 font-medium tracking-tight">{auth.currentUser?.email}</p>
         </div>
         {!isEditing && (
-          <button 
-            onClick={() => setIsEditing(true)}
-            className="px-6 py-2 glass rounded-full text-sm font-bold text-green-600 hover:bg-green-50 transition-all ios-shadow"
+          <motion.button 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={() => {
+              triggerHaptic(hapticPatterns.light);
+              setIsEditing(true);
+            }}
+            className="px-8 py-3 bg-white border border-gray-100 rounded-2xl text-sm font-bold text-green-600 hover:bg-green-50 transition-all ios-shadow ios-tap flex items-center gap-2"
           >
+            <User size={16} strokeWidth={2.5} />
             Edit Profile
-          </button>
+          </motion.button>
         )}
       </div>
 
@@ -350,17 +366,26 @@ const SettingsScreen: React.FC = () => {
               />
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-4 pt-4">
               <button 
-                onClick={() => setIsEditing(false)}
-                className="flex-1 py-4 glass rounded-2xl font-bold text-gray-500 hover:bg-gray-50 transition-all ios-shadow"
+                onClick={() => {
+                  triggerHaptic(hapticPatterns.light);
+                  setIsEditing(false);
+                  setFormData(initialData); // Reset changes on cancel
+                }}
+                className="flex-1 py-4 glass rounded-2xl font-bold text-gray-500 hover:bg-gray-50 transition-all ios-shadow ios-tap"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleSave}
-                className="flex-2 py-4 bg-green-600 text-white rounded-2xl font-bold shadow-xl shadow-green-600/20 hover:bg-green-700 transition-all flex items-center justify-center gap-3"
+                disabled={!isDirty}
+                className={cn(
+                  "flex-2 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 ios-tap",
+                  isDirty 
+                    ? "bg-green-600 text-white shadow-xl shadow-green-600/20 hover:bg-green-700" 
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                )}
               >
                 <Save size={20} strokeWidth={2.5} />
                 Save Changes

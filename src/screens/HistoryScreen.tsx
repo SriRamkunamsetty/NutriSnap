@@ -79,9 +79,15 @@ const HistoryScreen: React.FC = () => {
                       <div className="flex-1 min-w-0 space-y-1">
                         <h4 className="font-bold text-gray-900 truncate text-lg tracking-tight">{item.foodName}</h4>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-green-600 bg-green-50/50 px-2 py-0.5 rounded-full border border-green-100">
-                            {item.calories} kcal
-                          </span>
+                          {item.type === 'food' ? (
+                            <span className="text-[10px] font-bold text-green-600 bg-green-50/50 px-2 py-0.5 rounded-full border border-green-100">
+                              {item.calories} kcal
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-widest">
+                              {item.type}
+                            </span>
+                          )}
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                             {format(new Date(item.timestamp), 'h:mm a')}
                           </span>

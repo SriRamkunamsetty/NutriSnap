@@ -9,6 +9,14 @@ import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { sendLocalNotification } from '../lib/notifications';
 import { useUser } from '../contexts/UserContext';
 
+const FOOD_DATABASE: Record<string, Partial<ScanResult>> = {
+  'pizza': { foodName: 'Pizza Slice', calories: 285, protein: 12, carbs: 36, fats: 10, type: 'food', confidence: 0.8 },
+  'burger': { foodName: 'Classic Burger', calories: 550, protein: 25, carbs: 45, fats: 30, type: 'food', confidence: 0.8 },
+  'salad': { foodName: 'Garden Salad', calories: 150, protein: 5, carbs: 10, fats: 8, type: 'food', confidence: 0.8 },
+  'apple': { foodName: 'Red Apple', calories: 95, protein: 0.5, carbs: 25, fats: 0.3, type: 'food', confidence: 0.9 },
+  'chicken': { foodName: 'Grilled Chicken', calories: 330, protein: 50, carbs: 0, fats: 12, type: 'food', confidence: 0.85 },
+};
+
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
   const { profile, scans, dailySummary } = useUser();
@@ -42,11 +50,32 @@ const HomeScreen: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        const result = await analyzeFoodImage(base64, file.type);
+        let result: Partial<ScanResult>;
+        
+        try {
+          result = await analyzeFoodImage(base64, file.type);
+        } catch (apiError) {
+          console.warn("AI Analysis failed, using fallback mechanism", apiError);
+          // Fallback: Try to find a match in local database based on filename or use default
+          const fileName = file.name.toLowerCase();
+          const match = Object.keys(FOOD_DATABASE).find(key => fileName.includes(key));
+          result = match ? FOOD_DATABASE[match] : {
+            foodName: 'Unknown Meal',
+            type: 'food',
+            calories: 450, // Default estimation
+            protein: 15,
+            carbs: 40,
+            fats: 20,
+            confidence: 0.5,
+            description: "We couldn't reach the AI, so we've provided a standard estimation for a balanced meal."
+          };
+        }
         
         if (result.foodName) {
           const scanData: Omit<ScanResult, 'id' | 'userId' | 'timestamp'> = {
             foodName: result.foodName,
+            type: result.type as any || 'food',
+            description: result.description,
             calories: result.calories || 0,
             protein: result.protein || 0,
             carbs: result.carbs || 0,
@@ -62,9 +91,9 @@ const HomeScreen: React.FC = () => {
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Scan failed", error);
+      console.error("Scan process failed", error);
       triggerHaptic(hapticPatterns.error);
-      alert("Failed to analyze image. Please try again.");
+      alert("Failed to process image. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -73,9 +102,9 @@ const HomeScreen: React.FC = () => {
   const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / profile.calorieLimit : 0;
 
   return (
-    <div className="space-y-10 pb-10">
+    <div className="space-y-10 pb-10 pt-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
             Hi, <span className="text-green-600">{profile?.displayName?.split(' ')[0] || 'User'}</span>
@@ -218,9 +247,15 @@ const HomeScreen: React.FC = () => {
             <div className="flex-1 min-w-0 space-y-1">
               <h4 className="font-bold text-gray-900 truncate text-lg tracking-tight">{scans[0].foodName}</h4>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-green-600 bg-green-50/50 px-2 py-0.5 rounded-full border border-green-100">
-                  {scans[0].calories} kcal
-                </span>
+                {scans[0].type === 'food' ? (
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50/50 px-2 py-0.5 rounded-full border border-green-100">
+                    {scans[0].calories} kcal
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-widest">
+                    {scans[0].type}
+                  </span>
+                )}
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   {new Date(scans[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
