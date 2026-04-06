@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles } from 'lucide-react';
+import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
 import { saveUserProfile, uploadProfileImage } from '../services/storageService';
@@ -29,6 +29,9 @@ const SettingsScreen: React.FC = () => {
     weight: 70,
     goal: 'maintain' as Goal,
     calorieLimit: 2000,
+    proteinGoal: 150,
+    carbsGoal: 200,
+    fatsGoal: 70,
     displayName: auth.currentUser?.displayName || 'User',
     photoURL: auth.currentUser?.photoURL || '',
     bmi: 22.9,
@@ -45,6 +48,9 @@ const SettingsScreen: React.FC = () => {
         weight: profile.weight || 70,
         goal: profile.goal || 'maintain',
         calorieLimit: profile.calorieLimit || 2000,
+        proteinGoal: profile.proteinGoal || 150,
+        carbsGoal: profile.carbsGoal || 200,
+        fatsGoal: profile.fatsGoal || 70,
         displayName: profile.displayName || auth.currentUser?.displayName || 'User',
         photoURL: profile.photoURL || auth.currentUser?.photoURL || '',
         bmi: profile.bmi || 22.9,
@@ -371,6 +377,69 @@ const SettingsScreen: React.FC = () => {
                 onChange={(e) => handleInputChange('calorieLimit', parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-green-600"
               />
+            </div>
+
+            {/* Macro Goals */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* Protein Goal */}
+              <div className="glass-card p-6 rounded-[32px] space-y-4 ios-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-blue-500">
+                    <Beef size={20} strokeWidth={2.5} />
+                    <h4 className="font-bold text-gray-800 tracking-tight">Protein Goal</h4>
+                  </div>
+                  <span className="text-xl font-black text-gray-900">{formData.proteinGoal} <span className="text-xs text-gray-400 font-bold uppercase">g</span></span>
+                </div>
+                <input 
+                  type="range" 
+                  min="50" 
+                  max="300" 
+                  step="5"
+                  value={formData.proteinGoal}
+                  onChange={(e) => handleInputChange('proteinGoal', parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                />
+              </div>
+
+              {/* Carbs Goal */}
+              <div className="glass-card p-6 rounded-[32px] space-y-4 ios-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-orange-500">
+                    <Wheat size={20} strokeWidth={2.5} />
+                    <h4 className="font-bold text-gray-800 tracking-tight">Carbs Goal</h4>
+                  </div>
+                  <span className="text-xl font-black text-gray-900">{formData.carbsGoal} <span className="text-xs text-gray-400 font-bold uppercase">g</span></span>
+                </div>
+                <input 
+                  type="range" 
+                  min="50" 
+                  max="500" 
+                  step="5"
+                  value={formData.carbsGoal}
+                  onChange={(e) => handleInputChange('carbsGoal', parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+              </div>
+
+              {/* Fats Goal */}
+              <div className="glass-card p-6 rounded-[32px] space-y-4 ios-shadow">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-purple-500">
+                    <Droplets size={20} strokeWidth={2.5} />
+                    <h4 className="font-bold text-gray-800 tracking-tight">Fats Goal</h4>
+                  </div>
+                  <span className="text-xl font-black text-gray-900">{formData.fatsGoal} <span className="text-xs text-gray-400 font-bold uppercase">g</span></span>
+                </div>
+                <input 
+                  type="range" 
+                  min="20" 
+                  max="150" 
+                  step="5"
+                  value={formData.fatsGoal}
+                  onChange={(e) => handleInputChange('fatsGoal', parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
             </div>
 
             <div className="flex gap-4 pt-4">

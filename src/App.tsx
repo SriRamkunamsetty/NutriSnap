@@ -11,6 +11,7 @@ import AnalyticsScreen from './screens/AnalyticsScreen';
 import AIChatScreen from './screens/AIChatScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import ResultScreen from './screens/ResultScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
 
 // Error Boundary Component
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: any }> {
@@ -61,7 +62,7 @@ import { UserProvider, useUser } from './contexts/UserContext';
 import { requestNotificationPermission } from './lib/notifications';
 
 const AppContent: React.FC = () => {
-  const { user, loading } = useUser();
+  const { user, profile, loading } = useUser();
 
   useEffect(() => {
     // Request notification permission
@@ -131,19 +132,31 @@ const AppContent: React.FC = () => {
     );
   }
 
+  const hasCompletedOnboarding = profile?.hasCompletedOnboarding;
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<HomeScreen />} />
-            <Route path="history" element={<HistoryScreen />} />
-            <Route path="analytics" element={<AnalyticsScreen />} />
-            <Route path="chat" element={<AIChatScreen />} />
-            <Route path="settings" element={<SettingsScreen />} />
-            <Route path="result/:id" element={<ResultScreen />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {!hasCompletedOnboarding ? (
+            <>
+              <Route path="/onboarding" element={<OnboardingScreen />} />
+              <Route path="*" element={<Navigate to="/onboarding" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<HomeScreen />} />
+                <Route path="history" element={<HistoryScreen />} />
+                <Route path="analytics" element={<AnalyticsScreen />} />
+                <Route path="chat" element={<AIChatScreen />} />
+                <Route path="settings" element={<SettingsScreen />} />
+                <Route path="result/:id" element={<ResultScreen />} />
+              </Route>
+              <Route path="/onboarding" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          )}
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

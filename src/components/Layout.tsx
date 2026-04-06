@@ -108,7 +108,7 @@ const Layout: React.FC = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className={cn("flex-1 pb-32", isHome ? "pt-4" : "pt-2")}>
+      <main className={cn("flex-1 pb-32", isHome ? "pt-4" : "pt-0")}>
         <div className="max-w-md mx-auto w-full px-4 overflow-x-hidden">
           <AnimatePresence mode="wait">
             {!isHome && title && (
@@ -122,7 +122,7 @@ const Layout: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="mb-2 px-2 relative z-10"
+                className="mb-1 px-2 relative z-10"
               >
                 <h2 className="text-5xl font-black text-gray-900 tracking-tighter">{title}</h2>
               </motion.div>

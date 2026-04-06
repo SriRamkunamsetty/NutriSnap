@@ -2,29 +2,102 @@ import React from 'react';
 import { TrendingUp, Calendar, PieChart, Activity, Apple, Zap, Droplets, Flame, ChevronRight, Info, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { format, subDays, isSameDay } from 'date-fns';
 
 const AnalyticsScreen: React.FC = () => {
-  const { profile, dailySummary } = useUser();
+  const { profile, dailySummary, scans } = useUser();
 
-  const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / profile.calorieLimit : 0;
+  const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / (profile.calorieLimit || 2000) : 0;
 
   const macroData = [
-    { label: 'Protein', value: dailySummary?.totalProtein || 0, goal: 150, color: 'bg-blue-500', icon: Zap, unit: 'g', textColor: 'text-blue-500' },
-    { label: 'Carbs', value: dailySummary?.totalCarbs || 0, goal: 250, color: 'bg-orange-500', icon: Apple, unit: 'g', textColor: 'text-orange-500' },
-    { label: 'Fats', value: dailySummary?.totalFats || 0, goal: 70, color: 'bg-purple-500', icon: Droplets, unit: 'g', textColor: 'text-purple-500' },
+    { label: 'Protein', value: dailySummary?.totalProtein || 0, goal: profile?.proteinGoal || 150, color: 'bg-blue-500', icon: Zap, unit: 'g', textColor: 'text-blue-500' },
+    { label: 'Carbs', value: dailySummary?.totalCarbs || 0, goal: profile?.carbsGoal || 250, color: 'bg-orange-500', icon: Apple, unit: 'g', textColor: 'text-orange-500' },
+    { label: 'Fats', value: dailySummary?.totalFats || 0, goal: profile?.fatsGoal || 70, color: 'bg-purple-500', icon: Droplets, unit: 'g', textColor: 'text-purple-500' },
   ];
+
+  // Process last 7 days data
+  const weeklyData = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    const dayScans = scans.filter(s => isSameDay(new Date(s.timestamp), date));
+    
+    return {
+      name: format(date, 'EEE'),
+      calories: dayScans.reduce((sum, s) => sum + (s.calories || 0), 0),
+      protein: dayScans.reduce((sum, s) => sum + (s.protein || 0), 0),
+      carbs: dayScans.reduce((sum, s) => sum + (s.carbs || 0), 0),
+      fats: dayScans.reduce((sum, s) => sum + (s.fats || 0), 0),
+      fullDate: format(date, 'MMM d'),
+    };
+  });
 
   return (
     <div className="space-y-10 pb-10">
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2 glass px-4 py-2 rounded-2xl ios-shadow">
           <Calendar size={16} className="text-green-600" strokeWidth={2.5} />
-          <span className="text-xs font-bold text-gray-600">Today</span>
+          <span className="text-xs font-bold text-gray-600">Weekly Overview</span>
         </div>
         <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap">
           <TrendingUp size={20} />
         </button>
       </div>
+
+      {/* Weekly Trend Chart */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass-card p-8 rounded-[40px] ios-shadow space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="text-green-500" size={18} strokeWidth={2.5} />
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Weekly Calories</h3>
+          </div>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last 7 Days</span>
+        </div>
+
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyData}>
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
+                dy={10}
+              />
+              <Tooltip 
+                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="glass p-3 rounded-2xl border border-white/50 shadow-xl">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{payload[0].payload.fullDate}</p>
+                        <p className="text-lg font-black text-gray-900">{payload[0].value} <span className="text-[10px] text-gray-400">kcal</span></p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar 
+                dataKey="calories" 
+                radius={[6, 6, 6, 6]}
+                barSize={24}
+              >
+                {weeklyData.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.calories > (profile?.calorieLimit || 2000) ? '#EF4444' : '#22C55E'} 
+                    fillOpacity={index === 6 ? 1 : 0.4}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 gap-8">

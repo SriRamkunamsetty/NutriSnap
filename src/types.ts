@@ -13,6 +13,10 @@ export interface UserProfile {
   fatEstimate?: number;
   goal?: Goal;
   calorieLimit?: number;
+  proteinGoal?: number;
+  carbsGoal?: number;
+  fatsGoal?: number;
+  hasCompletedOnboarding?: boolean;
   createdAt: string;
   lastLoginAt?: string;
 }
