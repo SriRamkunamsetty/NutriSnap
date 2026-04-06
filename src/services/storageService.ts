@@ -64,6 +64,20 @@ export const uploadProfileImage = async (file: File): Promise<string> => {
   return downloadURL;
 };
 
+export const uploadAIAvatar = async (file: File): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("User not authenticated");
+  
+  const storageRef = ref(storage, `users/${user.uid}/ai_avatar_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(storageRef);
+  
+  // Update profile with new aiAvatarURL
+  await saveUserProfile({ aiAvatarURL: downloadURL });
+  
+  return downloadURL;
+};
+
 export const saveUserProfile = async (profile: Partial<UserProfile>) => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");
@@ -113,6 +127,24 @@ export const updateDailySummary = async (scan: Omit<ScanResult, 'id' | 'userId' 
       totalProtein: increment(scan.protein),
       totalCarbs: increment(scan.carbs),
       totalFats: increment(scan.fats),
+    }, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+};
+
+export const updateWaterIntake = async (amount: number) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
+  const date = new Date().toISOString().split('T')[0];
+  const path = `users/${uid}/daily_summary/${date}`;
+  
+  try {
+    const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
+    await setDoc(summaryDoc, {
+      date,
+      totalWater: increment(amount),
     }, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -222,4 +254,19 @@ export const getChatHistory = (callback: (messages: ChatMessage[]) => void) => {
   }, (error) => {
     handleFirestoreError(error, OperationType.LIST, path);
   });
+};
+
+export const clearChatHistory = async () => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("User not authenticated");
+  
+  const path = `users/${uid}/messages`;
+  try {
+    const q = query(collection(db, 'users', uid, 'messages'));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
 };

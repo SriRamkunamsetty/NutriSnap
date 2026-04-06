@@ -117,12 +117,13 @@ service cloud.firestore {
     }
 
     function isValidDailySummary(data) {
-      return data.keys().hasAll(['date', 'totalCalories', 'totalProtein', 'totalCarbs', 'totalFats']) &&
+      return data.keys().hasAll(['date']) &&
              data.date is string &&
-             data.totalCalories is number &&
-             data.totalProtein is number &&
-             data.totalCarbs is number &&
-             data.totalFats is number;
+             (data.get('totalCalories', 0) is number) &&
+             (data.get('totalProtein', 0) is number) &&
+             (data.get('totalCarbs', 0) is number) &&
+             (data.get('totalFats', 0) is number) &&
+             (data.get('totalWater', 0) is number);
     }
 
     // ===============================================================

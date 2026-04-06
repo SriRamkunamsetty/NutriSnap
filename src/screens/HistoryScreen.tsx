@@ -156,7 +156,7 @@ const HistoryScreen: React.FC = () => {
       <div className="space-y-10">
         {Object.keys(groupedHistory).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
-            <div className="w-24 h-24 glass rounded-[40px] flex items-center justify-center text-gray-300 ios-shadow">
+            <div className="w-24 h-24 glass rounded-[40px] flex items-center justify-center text-gray-300 ios-shadow border border-white/50">
               <Apple size={48} strokeWidth={1.5} />
             </div>
             <div className="space-y-2">

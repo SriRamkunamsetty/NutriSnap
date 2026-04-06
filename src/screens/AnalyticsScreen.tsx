@@ -9,6 +9,7 @@ const AnalyticsScreen: React.FC = () => {
   const { profile, dailySummary, scans } = useUser();
 
   const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / (profile.calorieLimit || 2000) : 0;
+  const waterProgress = profile ? (dailySummary?.totalWater || 0) / (profile.waterGoal || 2500) : 0;
 
   const macroData = [
     { label: 'Protein', value: dailySummary?.totalProtein || 0, goal: profile?.proteinGoal || 150, color: 'bg-blue-500', icon: Zap, unit: 'g', textColor: 'text-blue-500' },
@@ -34,11 +35,11 @@ const AnalyticsScreen: React.FC = () => {
   return (
     <div className="space-y-10 pb-10">
       <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 glass px-4 py-2 rounded-2xl ios-shadow">
+        <div className="flex items-center gap-2 glass px-4 py-2 rounded-2xl ios-shadow border border-white/50">
           <Calendar size={16} className="text-green-600" strokeWidth={2.5} />
           <span className="text-xs font-bold text-gray-600">Weekly Overview</span>
         </div>
-        <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap">
+        <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap border border-white/50">
           <TrendingUp size={20} />
         </button>
       </div>
@@ -94,6 +95,87 @@ const AnalyticsScreen: React.FC = () => {
                   />
                 ))}
               </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+
+      {/* Weekly Macro Progress Chart */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="glass-card p-8 rounded-[40px] ios-shadow space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="text-blue-500" size={18} strokeWidth={2.5} />
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Macro Progress</h3>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">P</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">C</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">F</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyData} barGap={4}>
+              <XAxis 
+                dataKey="name" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
+                dy={10}
+              />
+              <Tooltip 
+                cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    return (
+                      <div className="glass p-4 rounded-2xl border border-white/50 shadow-xl space-y-2 min-w-[140px]">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{payload[0].payload.fullDate}</p>
+                        {payload.map((p: any) => {
+                          const goal = p.name === 'protein' ? (profile?.proteinGoal || 150) : 
+                                       p.name === 'carbs' ? (profile?.carbsGoal || 250) : 
+                                       (profile?.fatsGoal || 70);
+                          const percent = Math.round((p.value / goal) * 100);
+                          
+                          return (
+                            <div key={p.name} className="flex flex-col gap-0.5">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{p.name}</span>
+                                <span className="text-sm font-black text-gray-900">{p.value}g</span>
+                              </div>
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                  className={cn("h-full", p.fill)} 
+                                  style={{ width: `${Math.min(percent, 100)}%` }} 
+                                />
+                              </div>
+                              <span className="text-[8px] font-bold text-gray-400 text-right">{percent}% of goal</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="protein" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={8} />
+              <Bar dataKey="carbs" fill="#F97316" radius={[4, 4, 0, 0]} barSize={8} />
+              <Bar dataKey="fats" fill="#A855F7" radius={[4, 4, 0, 0]} barSize={8} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -166,6 +248,70 @@ const AnalyticsScreen: React.FC = () => {
                 (profile?.calorieLimit || 2000) - (dailySummary?.totalCalories || 0) < 0 ? "text-red-500" : "text-green-600"
               )}>
                 {Math.max(0, (profile?.calorieLimit || 2000) - (dailySummary?.totalCalories || 0))}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Water Intake Summary */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-10 rounded-[48px] ios-shadow space-y-8 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+            <Droplets size={160} className="text-blue-600" />
+          </div>
+
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-2">
+              <Droplets className="text-blue-500" size={20} strokeWidth={2.5} />
+              <h3 className="font-bold text-gray-900 tracking-tight">Hydration Progress</h3>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center py-6 relative z-10">
+            <div className="relative w-56 h-56">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="112"
+                  cy="112"
+                  r="100"
+                  stroke="currentColor"
+                  strokeWidth="16"
+                  fill="transparent"
+                  className="text-gray-100/50"
+                />
+                <motion.circle
+                  cx="112"
+                  cy="112"
+                  r="100"
+                  stroke="currentColor"
+                  strokeWidth="16"
+                  fill="transparent"
+                  strokeDasharray={628.32}
+                  initial={{ strokeDashoffset: 628.32 }}
+                  animate={{ strokeDashoffset: 628.32 * (1 - Math.min(waterProgress, 1)) }}
+                  strokeLinecap="round"
+                  className="text-blue-500"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-5xl font-black text-gray-900 tracking-tighter">{dailySummary?.totalWater || 0}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">ml Consumed</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 pt-8 border-t border-gray-100/50 relative z-10">
+            <div className="text-center space-y-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Goal</p>
+              <p className="text-2xl font-black text-gray-900 tracking-tight">{profile?.waterGoal || 2500}</p>
+            </div>
+            <div className="text-center border-l border-gray-100/50 space-y-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Remaining</p>
+              <p className="text-2xl font-black text-blue-600 tracking-tight">
+                {Math.max(0, (profile?.waterGoal || 2500) - (dailySummary?.totalWater || 0))}
               </p>
             </div>
           </div>

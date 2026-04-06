@@ -3,6 +3,7 @@ import { auth } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { UserProfile, ScanResult, DailySummary } from '../types';
 import { getUserProfile, getScanHistory, getDailySummary, saveUserProfile } from '../services/storageService';
+import { sendLocalNotification } from '../lib/notifications';
 
 interface UserContextType {
   user: User | null;
@@ -11,6 +12,7 @@ interface UserContextType {
   dailySummary: DailySummary | null;
   loading: boolean;
   refreshProfile: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -21,6 +23,38 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (profile) {
+      const newProfile = { ...profile, ...updates };
+      await saveUserProfile(newProfile);
+      setProfile(newProfile);
+    }
+  };
+
+  // Reminder scheduler
+  useEffect(() => {
+    if (!profile?.reminders || profile.reminders.length === 0) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      profile.reminders?.forEach(reminder => {
+        if (reminder.enabled && reminder.time === currentTime) {
+          sendLocalNotification(
+            reminder.type === 'meal' ? '🍽️ Time for a meal!' : '💧 Time to hydrate!',
+            { body: `Don't forget to log your ${reminder.type} in NutriSnap.` }
+          );
+        }
+      });
+    };
+
+    // Check once immediately then every minute
+    checkReminders();
+    const interval = setInterval(checkReminders, 60000);
+    return () => clearInterval(interval);
+  }, [profile?.reminders]);
 
   const refreshProfile = async () => {
     if (user) {
@@ -78,7 +112,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, profile, scans, dailySummary, loading, refreshProfile }}>
+    <UserContext.Provider value={{ user, profile, scans, dailySummary, loading, refreshProfile, updateProfile }}>
       {children}
     </UserContext.Provider>
   );

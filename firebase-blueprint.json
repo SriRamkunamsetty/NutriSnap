@@ -16,6 +16,7 @@
         "fatEstimate": { "type": "number" },
         "goal": { "type": "string", "enum": ["lose", "maintain", "gain"] },
         "calorieLimit": { "type": "number" },
+        "aiAvatarURL": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "lastLoginAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
@@ -61,9 +62,10 @@
         "totalCalories": { "type": "number" },
         "totalProtein": { "type": "number" },
         "totalCarbs": { "type": "number" },
-        "totalFats": { "type": "number" }
+        "totalFats": { "type": "number" },
+        "totalWater": { "type": "number" }
       },
-      "required": ["date", "totalCalories", "totalProtein", "totalCarbs", "totalFats"]
+      "required": ["date"]
     }
   },
   "firestore": {

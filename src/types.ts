@@ -1,5 +1,13 @@
 export type Goal = 'lose' | 'maintain' | 'gain';
 export type BodyType = 'lean' | 'normal' | 'obese' | 'unknown';
+export type Theme = 'light' | 'dark';
+
+export interface Reminder {
+  id: string;
+  time: string; // HH:mm
+  type: 'meal' | 'water';
+  enabled: boolean;
+}
 
 export interface UserProfile {
   uid: string;
@@ -16,6 +24,10 @@ export interface UserProfile {
   proteinGoal?: number;
   carbsGoal?: number;
   fatsGoal?: number;
+  waterGoal?: number; // in ml
+  reminders?: Reminder[];
+  theme?: Theme;
+  aiAvatarURL?: string;
   hasCompletedOnboarding?: boolean;
   createdAt: string;
   lastLoginAt?: string;
@@ -51,6 +63,7 @@ export interface DailySummary {
   totalProtein: number;
   totalCarbs: number;
   totalFats: number;
+  totalWater: number; // in ml
 }
 
 export interface DailyStats {
@@ -59,4 +72,5 @@ export interface DailyStats {
   protein: number;
   carbs: number;
   fats: number;
+  water: number;
 }

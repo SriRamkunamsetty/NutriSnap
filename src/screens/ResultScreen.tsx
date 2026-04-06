@@ -197,6 +197,24 @@ const ResultScreen: React.FC = () => {
               <span className="bg-green-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-lg">
                 AI {(scan.type === 'food' || (scan.calories && scan.calories > 0)) ? 'Verified' : 'Detected'}
               </span>
+              {scan.confidence && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-2 bg-white/10 backdrop-blur-xl px-3 py-1.5 rounded-full border border-white/20 shadow-sm"
+                >
+                  <div className="w-10 h-1 bg-white/20 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${scan.confidence * 100}%` }}
+                      className="h-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]"
+                    />
+                  </div>
+                  <span className="text-[10px] font-black text-white tracking-tight">
+                    {Math.round(scan.confidence * 100)}%
+                  </span>
+                </motion.div>
+              )}
             </div>
             
             <h1 className="text-4xl font-black text-white tracking-tighter leading-tight drop-shadow-2xl">

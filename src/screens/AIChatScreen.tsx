@@ -1,19 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAICoachResponse } from '../services/geminiService';
-import { saveChatMessage, getChatHistory } from '../services/storageService';
+import { saveChatMessage, getChatHistory, uploadAIAvatar } from '../services/storageService';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { useUser } from '../contexts/UserContext';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from '../types';
 
 const AIChatScreen: React.FC = () => {
-  const { profile, scans, dailySummary } = useUser();
+  const { profile, scans, dailySummary, refreshProfile } = useUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const aiAvatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubscribe = getChatHistory((history) => {
@@ -38,27 +41,29 @@ const AIChatScreen: React.FC = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isLoading, suggestions]);
 
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (textToSend?: string) => {
+    const messageText = textToSend || input.trim();
+    if (!messageText || isLoading) return;
 
-    const userMessage = input.trim();
-    setInput('');
+    if (!textToSend) setInput('');
+    setSuggestions([]);
     setIsLoading(true);
     triggerHaptic(hapticPatterns.medium);
 
     try {
-      await saveChatMessage('user', userMessage);
-      const aiResponse = await getAICoachResponse(
-        messages.map(m => ({ role: m.role, text: m.text })),
+      await saveChatMessage('user', messageText);
+      const result = await getAICoachResponse(
+        [...messages, { role: 'user', text: messageText } as any].map(m => ({ role: m.role, text: m.text })),
         profile,
         dailySummary,
         scans
       );
-      if (aiResponse) {
-        await saveChatMessage('model', aiResponse);
+      
+      if (result && result.text) {
+        await saveChatMessage('model', result.text);
+        setSuggestions(result.suggestions || []);
         triggerHaptic(hapticPatterns.success);
       }
     } catch (error) {
@@ -66,6 +71,25 @@ const AIChatScreen: React.FC = () => {
       triggerHaptic(hapticPatterns.error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAIAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    triggerHaptic(hapticPatterns.medium);
+    
+    try {
+      await uploadAIAvatar(file);
+      await refreshProfile();
+      triggerHaptic(hapticPatterns.success);
+    } catch (error) {
+      console.error("AI Avatar upload failed", error);
+      triggerHaptic(hapticPatterns.error);
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -87,13 +111,41 @@ const AIChatScreen: React.FC = () => {
             key={msg.id}
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
           >
-            <div className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+            {/* Avatar */}
+            <div className="flex-shrink-0 mb-6 relative group">
+              {msg.role === 'user' ? (
+                <div className="w-8 h-8 bg-green-500 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden">
+                  {profile?.photoURL ? (
+                    <img src={profile.photoURL} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <User size={16} />
+                  )}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => aiAvatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden relative group"
+                >
+                  {profile?.aiAvatarURL ? (
+                    <img src={profile.aiAvatarURL} alt="AI" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Bot size={16} />
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                  </div>
+                </button>
+              )}
+            </div>
+
+            <div className={`flex flex-col max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`px-5 py-3.5 rounded-[24px] text-sm leading-relaxed ios-shadow ${
                 msg.role === 'user' 
-                  ? 'bg-green-600 text-white rounded-tr-none font-medium' 
-                  : 'glass-card text-gray-800 rounded-tl-none border-white/50'
+                  ? 'bg-green-600 text-white rounded-br-none font-medium' 
+                  : 'glass-card text-gray-800 rounded-bl-none border-white/50'
               }`}>
                 <div className="prose prose-sm max-w-none">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
@@ -105,25 +157,60 @@ const AIChatScreen: React.FC = () => {
             </div>
           </motion.div>
         ))}
+        
         {isLoading && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex justify-start"
+            className="flex justify-start items-end gap-3"
           >
-            <div className="glass-card px-5 py-4 rounded-[24px] rounded-tl-none border-white/50 flex gap-1.5 ios-shadow">
+            <div className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-sm overflow-hidden">
+              {profile?.aiAvatarURL ? (
+                <img src={profile.aiAvatarURL} alt="AI" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <Bot size={16} />
+              )}
+            </div>
+            <div className="glass-card px-5 py-4 rounded-[24px] rounded-bl-none border-white/50 flex gap-1.5 ios-shadow">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce" />
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
             </div>
           </motion.div>
         )}
+
+        {/* Suggestions */}
+        {!isLoading && suggestions.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-wrap gap-2 pt-2"
+          >
+            {suggestions.map((suggestion, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSend(suggestion)}
+                className="px-4 py-2 glass hover:bg-white/60 rounded-full text-xs font-bold text-green-600 border border-green-100 ios-shadow ios-tap flex items-center gap-2"
+              >
+                <MessageSquare size={12} />
+                {suggestion}
+              </button>
+            ))}
+          </motion.div>
+        )}
       </div>
 
       {/* Input Area */}
       <div className="px-6 pb-4 pt-2">
+        <input 
+          type="file" 
+          ref={aiAvatarInputRef} 
+          onChange={handleAIAvatarChange} 
+          accept="image/*" 
+          className="hidden" 
+        />
         <form 
-          onSubmit={handleSend}
+          onSubmit={(e) => { e.preventDefault(); handleSend(); }}
           className="relative flex items-center"
         >
           <input 

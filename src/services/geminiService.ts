@@ -102,8 +102,8 @@ export const getAICoachResponse = async (
   const model = "gemini-3-flash-preview";
   
   const historySummary = recentHistory
-    .slice(0, 5)
-    .map(s => `- ${s.foodName}: ${s.calories}kcal`)
+    .slice(0, 10)
+    .map(s => `- ${s.foodName}: ${s.calories}kcal, P:${s.protein}g, C:${s.carbs}g, F:${s.fats}g (${new Date(s.timestamp).toLocaleDateString()})`)
     .join("\n");
 
   const remainingCalories = (userProfile.calorieLimit || 2000) - (dailySummary?.totalCalories || 0);
@@ -117,6 +117,9 @@ BMI: ${userProfile.bmi || 'Not set'}
 Body Type: ${userProfile.bodyType || 'Unknown'}
 Goal: ${userProfile.goal}
 Daily Calorie Limit: ${userProfile.calorieLimit} kcal
+Protein Goal: ${userProfile.proteinGoal}g
+Carbs Goal: ${userProfile.carbsGoal}g
+Fats Goal: ${userProfile.fatsGoal}g
 
 Today's Progress:
 Calories consumed: ${dailySummary?.totalCalories || 0} kcal
@@ -125,7 +128,7 @@ Protein: ${dailySummary?.totalProtein || 0}g
 Carbs: ${dailySummary?.totalCarbs || 0}g
 Fats: ${dailySummary?.totalFats || 0}g
 
-Recent meals:
+Recent scans and meals:
 ${historySummary || "No recent meals recorded."}
 
 Instructions:
@@ -133,17 +136,35 @@ Instructions:
 2. If calories exceeded, warn the user and suggest lighter options.
 3. If protein is low relative to their goal, suggest high-protein foods.
 4. If BMI is high, suggest a sustainable weight loss approach.
-5. Keep responses short, practical, and encouraging. Use markdown.`;
+5. Keep responses short, practical, and encouraging. Use markdown.
+6. Provide 2-3 short follow-up questions or prompts the user might want to ask next.
 
-  const chat = ai.chats.create({
+Return the response as JSON with 'text' (the advice) and 'suggestions' (array of strings).`;
+
+  const response = await ai.models.generateContent({
     model,
+    contents: messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
     config: {
       systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          text: { type: Type.STRING },
+          suggestions: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          }
+        },
+        required: ["text", "suggestions"]
+      }
     },
   });
-
-  const lastMessage = messages[messages.length - 1].text;
-  const response = await chat.sendMessage({ message: lastMessage });
   
-  return response.text;
+  try {
+    return JSON.parse(response.text || "{}");
+  } catch (e) {
+    console.error("Failed to parse coach response", e);
+    return { text: response.text, suggestions: [] };
+  }
 };

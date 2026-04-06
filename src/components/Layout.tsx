@@ -19,7 +19,7 @@ const titles: Record<string, string> = {
 };
 
 const Layout: React.FC = () => {
-  const { profile } = useUser();
+  const { profile, updateProfile } = useUser();
   const location = useLocation();
   const isHome = location.pathname === '/';
   const title = titles[location.pathname] || '';
@@ -50,7 +50,7 @@ const Layout: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8F9FB] font-sans selection:bg-green-100">
+    <div className="flex flex-col min-h-screen bg-primary font-sans selection:bg-green-100">
       {/* Header - iOS Style Collapsing */}
       <AnimatePresence mode="wait">
         {!isHome && (
@@ -87,22 +87,24 @@ const Layout: React.FC = () => {
                 </AnimatePresence>
               </motion.div>
             </div>
-            <motion.div 
-              style={{ opacity: headerTitleOpacity }}
-              className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
-            >
-              {profile?.photoURL ? (
-                <img 
-                  src={profile.photoURL} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <User size={18} className="text-gray-400" />
-              )}
-              <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white animate-pulse" />
-            </motion.div>
+            <div className="flex items-center gap-2">
+              <motion.div 
+                style={{ opacity: headerTitleOpacity }}
+                className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
+              >
+                {profile?.photoURL ? (
+                  <img 
+                    src={profile.photoURL} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <User size={18} className="text-gray-400" />
+                )}
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+              </motion.div>
+            </div>
           </motion.header>
         )}
       </AnimatePresence>
@@ -145,7 +147,7 @@ const Layout: React.FC = () => {
 
       {/* Floating Pill Navigation - Liquid Glass Style */}
       <div className="fixed bottom-8 left-0 right-0 z-50 px-8 pointer-events-none">
-        <nav className="max-w-[320px] mx-auto bg-white/40 backdrop-blur-2xl rounded-[32px] p-1 flex justify-around items-center pointer-events-auto border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] relative h-14">
+        <nav className="max-w-[320px] mx-auto glass rounded-[32px] p-1 flex justify-around items-center pointer-events-auto relative h-14">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
