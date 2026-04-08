@@ -11,7 +11,7 @@ interface UserContextType {
   scans: ScanResult[];
   dailySummary: DailySummary | null;
   loading: boolean;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<UserProfile | null>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
@@ -27,8 +27,15 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (profile) {
       const newProfile = { ...profile, ...updates };
-      await saveUserProfile(newProfile);
+      // Update state immediately for instant UI feedback
       setProfile(newProfile);
+      // Save to Firestore in the background
+      try {
+        await saveUserProfile(newProfile);
+      } catch (error) {
+        console.error("Failed to save profile updates:", error);
+        // Optionally revert state if save fails, but usually we trust the local state
+      }
     }
   };
 
@@ -60,7 +67,9 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user) {
       const p = await getUserProfile(user.uid);
       setProfile(p);
+      return p;
     }
+    return null;
   };
 
   useEffect(() => {
@@ -86,6 +95,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             uid: currentUser.uid,
             email: currentUser.email || '',
             displayName: currentUser.displayName || 'User',
+            photoURL: currentUser.photoURL || '',
             height: 175,
             weight: 70,
             bmi: 22.9,

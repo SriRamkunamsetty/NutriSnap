@@ -3,7 +3,7 @@ import { Camera, Plus, History, TrendingUp, Search, Sparkles, Flame, Apple, Zap,
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeFoodImage } from '../services/geminiService';
-import { saveScanResult, updateWaterIntake } from '../services/storageService';
+import { saveScanResult, updateWaterIntake, uploadScanImage } from '../services/storageService';
 import { ScanResult } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { sendLocalNotification } from '../lib/notifications';
@@ -19,7 +19,7 @@ const FOOD_DATABASE: Record<string, Partial<ScanResult>> = {
 
 const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { profile, scans, dailySummary } = useUser();
+  const { user, profile, scans, dailySummary } = useUser();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showManualLog, setShowManualLog] = useState(false);
@@ -58,6 +58,9 @@ const HomeScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
 
     try {
+      // 1. Upload image to storage first
+      const imageUrl = await uploadScanImage(file);
+      
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
@@ -92,7 +95,7 @@ const HomeScreen: React.FC = () => {
             protein: result.protein || 0,
             carbs: result.carbs || 0,
             fats: result.fats || 0,
-            imageUrl: reader.result as string,
+            imageUrl: imageUrl, // Use the uploaded storage URL
             confidence: result.confidence || 0
           };
 
@@ -188,9 +191,9 @@ const HomeScreen: React.FC = () => {
             onClick={() => navigate('/settings')}
             className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
           >
-            {profile?.photoURL ? (
+            {(profile?.photoURL || user?.photoURL) ? (
               <img 
-                src={profile.photoURL} 
+                src={profile?.photoURL || user?.photoURL || ''} 
                 alt="Profile" 
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -301,14 +304,14 @@ const HomeScreen: React.FC = () => {
             {/* Primary Wave */}
             <motion.div 
               animate={{ 
-                x: [-200, 0],
+                x: [-400, 0],
               }}
               transition={{ 
-                duration: 4, 
+                duration: 5, 
                 repeat: Infinity, 
                 ease: "linear" 
               }}
-              className="absolute -top-8 left-0 w-[400%] h-16 opacity-60"
+              className="absolute -top-12 left-0 w-[800%] h-24 opacity-60"
             >
               <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-400">
                 <path d="M0,50 C150,100 350,0 500,50 C650,100 850,0 1000,50 L1000,100 L0,100 Z" />
@@ -318,14 +321,14 @@ const HomeScreen: React.FC = () => {
             {/* Secondary Wave */}
             <motion.div 
               animate={{ 
-                x: [0, -200],
+                x: [0, -400],
               }}
               transition={{ 
-                duration: 6, 
+                duration: 8, 
                 repeat: Infinity, 
                 ease: "linear" 
               }}
-              className="absolute -top-6 left-0 w-[400%] h-14 opacity-40"
+              className="absolute -top-10 left-0 w-[800%] h-20 opacity-40"
             >
               <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-300">
                 <path d="M0,50 C150,0 350,100 500,50 C650,0 850,100 1000,50 L1000,100 L0,100 Z" />
@@ -335,14 +338,14 @@ const HomeScreen: React.FC = () => {
             {/* Tertiary Wave (Live Liquid Effect) */}
             <motion.div 
               animate={{ 
-                x: [-150, 50],
-                y: [0, 5, 0]
+                x: [-300, 100],
+                y: [0, 8, 0]
               }}
               transition={{ 
-                x: { duration: 8, repeat: Infinity, ease: "linear" },
-                y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                x: { duration: 12, repeat: Infinity, ease: "linear" },
+                y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
               }}
-              className="absolute -top-10 left-0 w-[400%] h-20 opacity-20"
+              className="absolute -top-14 left-0 w-[800%] h-28 opacity-20"
             >
               <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-white">
                 <path d="M0,50 C150,80 350,20 500,50 C650,80 850,20 1000,50 L1000,100 L0,100 Z" />

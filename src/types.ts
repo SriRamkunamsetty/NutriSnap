@@ -25,6 +25,9 @@ export interface UserProfile {
   proteinGoal?: number;
   carbsGoal?: number;
   fatsGoal?: number;
+  proteinPct?: number;
+  carbsPct?: number;
+  fatsPct?: number;
   waterGoal?: number; // in ml
   reminders?: Reminder[];
   theme?: Theme;
@@ -45,6 +48,7 @@ export interface ScanResult {
   protein: number;
   carbs: number;
   fats: number;
+  fatEstimate?: number;
   confidence: number;
   imageUrl?: string;
   timestamp: string;

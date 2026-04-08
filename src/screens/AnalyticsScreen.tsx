@@ -1,12 +1,38 @@
 import React from 'react';
-import { TrendingUp, Calendar, PieChart, Activity, Apple, Zap, Droplets, Flame, ChevronRight, Info, Sparkles } from 'lucide-react';
-import { motion } from 'motion/react';
+import { TrendingUp, Calendar, PieChart, Activity, Apple, Zap, Droplets, Flame, ChevronRight, Info, Sparkles, FileText, Loader2, Camera, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ComposedChart, Line, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ComposedChart, Line, Legend, AreaChart, Area } from 'recharts';
 import { format, subDays, isSameDay } from 'date-fns';
+import { generateHealthReport } from '../services/pdfService';
+import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 
 const AnalyticsScreen: React.FC = () => {
   const { profile, dailySummary, scans } = useUser();
+  const [isGeneratingReport, setIsGeneratingReport] = React.useState(false);
+  const [showReportSuccess, setShowReportSuccess] = React.useState(false);
+  const [reportError, setReportError] = React.useState<string | null>(null);
+
+  const handleDownloadReport = async () => {
+    if (!profile) return;
+    setIsGeneratingReport(true);
+    setReportError(null);
+    triggerHaptic(hapticPatterns.medium);
+    
+    try {
+      await generateHealthReport(profile, dailySummary, scans);
+      setShowReportSuccess(true);
+      triggerHaptic(hapticPatterns.success);
+      setTimeout(() => setShowReportSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to generate report", error);
+      setReportError("Failed to generate PDF report. Please try again.");
+      triggerHaptic(hapticPatterns.error);
+      setTimeout(() => setReportError(null), 4000);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / (profile.calorieLimit || 2000) : 0;
   const waterProgress = profile ? (dailySummary?.totalWater || 0) / (profile.waterGoal || 2500) : 0;
@@ -32,6 +58,17 @@ const AnalyticsScreen: React.FC = () => {
     };
   });
 
+  // Process body fat trend data (last 10 scans)
+  const bodyFatData = scans
+    .filter(s => s.type === 'person' && s.fatEstimate !== undefined)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .slice(-10)
+    .map(s => ({
+      date: format(new Date(s.timestamp), 'MMM d'),
+      fat: s.fatEstimate,
+      fullDate: format(new Date(s.timestamp), 'MMM d, yyyy')
+    }));
+
   return (
     <div className="space-y-10 pb-10">
       <div className="flex items-center justify-between px-2">
@@ -39,10 +76,134 @@ const AnalyticsScreen: React.FC = () => {
           <Calendar size={16} className="text-green-600" strokeWidth={2.5} />
           <span className="text-xs font-bold text-gray-600">Weekly Overview</span>
         </div>
-        <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap border border-white/50">
-          <TrendingUp size={20} />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleDownloadReport}
+            disabled={isGeneratingReport}
+            className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-blue-500 ios-shadow ios-tap border border-white/50 disabled:opacity-50"
+          >
+            {isGeneratingReport ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
+          </button>
+          <button className="w-10 h-10 glass rounded-2xl flex items-center justify-center text-gray-400 ios-shadow ios-tap border border-white/50">
+            <TrendingUp size={20} />
+          </button>
+        </div>
       </div>
+
+      {/* Report Success Toast */}
+      <AnimatePresence>
+        {showReportSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 left-6 right-6 z-[120]"
+          >
+            <div className="bg-green-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-green-500/50 backdrop-blur-xl">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText size={18} />
+              </div>
+              <p className="text-sm font-bold">Report downloaded successfully</p>
+            </div>
+          </motion.div>
+        )}
+        {reportError && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 left-6 right-6 z-[120]"
+          >
+            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-red-500/50 backdrop-blur-xl">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                <X size={18} />
+              </div>
+              <p className="text-sm font-bold">{reportError}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Body Fat Trend Chart */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-8 rounded-[40px] ios-shadow space-y-8 relative overflow-hidden group"
+      >
+        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+          <Activity size={160} className="text-purple-500" />
+        </div>
+
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-600">
+              <Activity size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 tracking-tight">Body Fat Trend</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last 10 Scans</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-black text-purple-600 tracking-tight">
+              {bodyFatData.length > 0 ? bodyFatData[bodyFatData.length - 1].fat : '--'}%
+            </span>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Current Est.</p>
+          </div>
+        </div>
+
+        <div className="h-64 w-full relative z-10">
+          {bodyFatData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={bodyFatData}>
+                <defs>
+                  <linearGradient id="fatGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A855F7" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#A855F7" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  dy={10}
+                />
+                <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/50">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{payload[0].payload.fullDate}</p>
+                          <p className="text-lg font-black text-purple-600">{payload[0].value}% Fat</p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="fat" 
+                  stroke="#A855F7" 
+                  strokeWidth={4}
+                  fillOpacity={1} 
+                  fill="url(#fatGradient)"
+                  animationDuration={2000}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-3">
+              <div className="w-16 h-16 bg-gray-50 rounded-3xl flex items-center justify-center text-gray-300">
+                <Activity size={32} />
+              </div>
+              <p className="text-sm font-medium text-gray-400 max-w-[200px]">Perform a body scan to see your body fat trends over time.</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* Daily Summary Overview */}
       <motion.div 
@@ -129,7 +290,7 @@ const AnalyticsScreen: React.FC = () => {
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
+                tick={{ fontSize: 11, fontWeight: 800, fill: '#374151' }}
                 dy={10}
               />
               <YAxis yAxisId="left" hide />
@@ -147,34 +308,49 @@ const AnalyticsScreen: React.FC = () => {
                     };
 
                     return (
-                      <div className="glass p-4 rounded-2xl border border-white/50 shadow-xl space-y-3 min-w-[160px]">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">{data.fullDate}</p>
+                      <div className="glass p-5 rounded-[24px] border border-white/50 shadow-2xl space-y-4 min-w-[200px] backdrop-blur-xl">
+                        <div className="flex items-center justify-between border-b border-gray-100/50 pb-3">
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">{data.fullDate}</p>
+                          <div className="px-2 py-0.5 bg-green-500/10 rounded-full">
+                            <span className="text-[8px] font-black text-green-600 uppercase tracking-widest">Daily Trend</span>
+                          </div>
+                        </div>
                         
-                        <div className="space-y-2">
+                        <div className="space-y-4">
                           <div className="flex items-center justify-between gap-4">
-                            <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Calories</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Calories</span>
+                            </div>
                             <div className="text-right">
-                              <p className="text-sm font-black text-gray-900">{data.calories} kcal</p>
-                              <p className="text-[8px] font-bold text-gray-400">{Math.round((data.calories / goals.calories) * 100)}% of goal</p>
+                              <p className="text-base font-black text-gray-900 leading-none">{data.calories} <span className="text-[10px] text-gray-400">kcal</span></p>
+                              <p className="text-[8px] font-bold text-gray-400 mt-1">{Math.round((data.calories / goals.calories) * 100)}% of goal</p>
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50">
-                            <div className="text-center">
-                              <p className="text-[8px] font-bold text-blue-500 uppercase">Prot</p>
-                              <p className="text-[10px] font-black text-gray-900">{data.protein}g</p>
-                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.protein / goals.protein) * 100)}%</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-[8px] font-bold text-orange-500 uppercase">Carb</p>
-                              <p className="text-[10px] font-black text-gray-900">{data.carbs}g</p>
-                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.carbs / goals.carbs) * 100)}%</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-[8px] font-bold text-purple-500 uppercase">Fat</p>
-                              <p className="text-[10px] font-black text-gray-900">{data.fats}g</p>
-                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.fats / goals.fats) * 100)}%</p>
-                            </div>
+                          <div className="space-y-3 pt-3 border-t border-gray-100/50">
+                            {[
+                              { label: 'Protein', key: 'protein', color: 'text-blue-500', bg: 'bg-blue-500', goal: goals.protein },
+                              { label: 'Carbs', key: 'carbs', color: 'text-orange-500', bg: 'bg-orange-500', goal: goals.carbs },
+                              { label: 'Fats', key: 'fats', color: 'text-purple-500', bg: 'bg-purple-500', goal: goals.fats }
+                            ].map(macro => {
+                              const value = data[macro.key] || 0;
+                              const percent = Math.round((value / macro.goal) * 100);
+                              return (
+                                <div key={macro.key} className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className={cn("text-[9px] font-black uppercase tracking-widest", macro.color)}>{macro.label}</span>
+                                    <span className="text-xs font-black text-gray-900">{value}g <span className="text-[8px] text-gray-400 font-bold">({percent}%)</span></span>
+                                  </div>
+                                  <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                                    <div 
+                                      className={cn("h-full rounded-full", macro.bg)} 
+                                      style={{ width: `${Math.min(percent, 100)}%` }} 
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>
@@ -235,7 +411,7 @@ const AnalyticsScreen: React.FC = () => {
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
+                tick={{ fontSize: 11, fontWeight: 800, fill: '#374151' }}
                 dy={10}
               />
               <Tooltip 
@@ -280,6 +456,64 @@ const AnalyticsScreen: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </motion.div>
+
+      {/* Body Fat Trend Chart */}
+      {bodyFatData.length > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.15 }}
+          className="glass-card p-8 rounded-[40px] ios-shadow space-y-6"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity className="text-purple-500" size={18} strokeWidth={2.5} />
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Body Fat Trend</h3>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Fat %</span>
+            </div>
+          </div>
+
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={bodyFatData}>
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 11, fontWeight: 800, fill: '#374151' }}
+                  dy={10}
+                />
+                <Tooltip 
+                  cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload;
+                      return (
+                        <div className="glass p-4 rounded-2xl border border-white/50 shadow-xl space-y-2 min-w-[140px]">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{data.fullDate}</p>
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-[10px] font-bold text-purple-500 uppercase tracking-widest">Body Fat</span>
+                            <span className="text-sm font-black text-gray-900">{data.fat}%</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Bar dataKey="fat" fill="#A855F7" radius={[8, 8, 0, 0]} barSize={24}>
+                  {bodyFatData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fillOpacity={0.6 + (index / bodyFatData.length) * 0.4} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
+      )}
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 gap-8">

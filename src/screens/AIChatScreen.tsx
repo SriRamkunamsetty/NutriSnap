@@ -1,12 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare, Camera } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare, Camera, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAICoachResponse } from '../services/geminiService';
-import { saveChatMessage, getChatHistory, uploadAIAvatar } from '../services/storageService';
+import { saveChatMessage, getChatHistory, uploadAIAvatar, getDailySummaryOnce } from '../services/storageService';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { useUser } from '../contexts/UserContext';
 import ReactMarkdown from 'react-markdown';
 import { ChatMessage } from '../types';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const AIChatScreen: React.FC = () => {
   const { profile, scans, dailySummary, refreshProfile } = useUser();
@@ -14,6 +20,7 @@ const AIChatScreen: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showAvatarSuccess, setShowAvatarSuccess] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const aiAvatarInputRef = useRef<HTMLInputElement>(null);
@@ -53,18 +60,20 @@ const AIChatScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
 
     try {
-      await refreshProfile();
+      // Fetch the absolute latest data from Firestore to ensure context-aware advice
+      const [latestProfile, latestSummary] = await Promise.all([
+        refreshProfile(),
+        getDailySummaryOnce()
+      ]);
       
-      // Use the latest context data directly to ensure AI has most recent state
-      // Note: context values might still be stale in the current render cycle, 
-      // but refreshProfile ensures the underlying data is updated in Firestore.
-      // The getAICoachResponse will use the values passed to it.
+      const currentProfile = latestProfile || profile;
+      const currentSummary = latestSummary || dailySummary;
       
       await saveChatMessage('user', messageText);
       const result = await getAICoachResponse(
         [...messages, { role: 'user', text: messageText } as any].map(m => ({ role: m.role, text: m.text })),
-        profile,
-        dailySummary,
+        currentProfile,
+        currentSummary,
         scans
       );
       
@@ -91,7 +100,9 @@ const AIChatScreen: React.FC = () => {
     try {
       await uploadAIAvatar(file);
       await refreshProfile();
+      setShowAvatarSuccess(true);
       triggerHaptic(hapticPatterns.success);
+      setTimeout(() => setShowAvatarSuccess(false), 3000);
     } catch (error) {
       console.error("AI Avatar upload failed", error);
       triggerHaptic(hapticPatterns.error);
@@ -141,7 +152,10 @@ const AIChatScreen: React.FC = () => {
                   ) : (
                     <Bot size={16} />
                   )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <div className={cn(
+                    "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
+                    isUploadingAvatar ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                  )}>
                     {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
                   </div>
                 </button>
@@ -206,6 +220,25 @@ const AIChatScreen: React.FC = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Avatar Success Toast */}
+      <AnimatePresence>
+        {showAvatarSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 left-6 right-6 z-[120]"
+          >
+            <div className="bg-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-purple-500/50 backdrop-blur-xl">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                <Bot size={18} />
+              </div>
+              <p className="text-sm font-bold">AI Avatar updated successfully</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Input Area */}
       <div className="px-6 pb-4 pt-2">

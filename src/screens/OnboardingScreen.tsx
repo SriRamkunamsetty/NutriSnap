@@ -212,6 +212,17 @@ const OnboardingScreen: React.FC = () => {
                   <div className="flex-1">
                     <h4 className="text-lg font-black text-gray-900 tracking-tight">{item.label}</h4>
                     <p className="text-sm text-gray-500 font-medium">{item.description}</p>
+                    {goal === item.id && (
+                      <motion.p 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-[10px] font-black text-green-600 mt-2 uppercase tracking-widest"
+                      >
+                        {item.id === 'lose' ? '💡 Focus on whole foods!' : 
+                         item.id === 'gain' ? '💡 Prioritize protein intake!' : 
+                         '💡 Balance is the key to success!'}
+                      </motion.p>
+                    )}
                   </div>
                   {goal === item.id && (
                     <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">

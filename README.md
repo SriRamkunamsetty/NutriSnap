@@ -2,6 +2,79 @@
 
 NutriSnap is a production-grade health and fitness application designed to simplify the complex process of nutrition tracking. By leveraging cutting-edge Artificial Intelligence and a seamless mobile-first user experience, NutriSnap transforms a simple photo into a detailed nutritional breakdown and personalized coaching session.
 
+## ✨ Key Features
+
+### 📸 AI-Powered Food Recognition
+Transform your meal photos into actionable data. Using **Gemini 3.1 Pro's multimodal capabilities**, NutriSnap identifies food items, estimates portion sizes, and calculates a full nutritional breakdown (Calories, Protein, Carbs, Fats) with high precision.
+- **Multimodal Analysis**: Processes both image and text context.
+- **Portion Estimation**: Intelligently guesses weight/volume to calculate macros.
+- **Fallback Database**: Includes a local fallback for common items if the AI is unreachable.
+
+### 🤖 Personalized AI Coach
+More than just a tracker, NutriSnap includes a **conversational AI coach**. It analyzes your entire history, current goals, and daily progress to provide tailored advice, answer nutrition questions, and keep you motivated.
+- **Context-Aware**: Knows your BMI, current calorie balance, and recent meals.
+- **Proactive Suggestions**: Offers follow-up questions to deepen your understanding.
+- **Motivational Tone**: Adapts its personality based on your progress and goals.
+
+### 🧘 AI Body Analysis
+Go beyond the scale. Upload a body scan image to receive an AI-driven estimate of your **Body Type** and **Body Fat Percentage**. This helps track physical composition changes that weight alone can't show.
+- **Visual Progress**: Stores body scan history to visualize physical changes.
+- **Privacy-First**: Images are stored securely in your private user folder.
+
+### 💧 Smart Hydration Tracking
+Stay hydrated with a visually stunning **live liquid wave animation**. The interface provides real-time feedback on your water intake goals with fluid, spring-physics-based transitions.
+- **Interactive Waves**: The "water" level rises and ripples as you log intake.
+- **Quick Log**: One-tap buttons for common amounts (250ml, 500ml).
+
+### 📈 Advanced Analytics & Trends
+Visualize your journey with interactive charts. Track your calorie trends and macronutrient distribution over time using **Recharts-powered dashboards**, helping you identify patterns and optimize your diet.
+- **Weekly Trends**: Composed charts showing calories (line) and macros (bars) together.
+- **Macro Breakdown**: Detailed tooltips showing grams and percentage of daily goals.
+
+### 🎯 Customizable Nutritional Goals
+Tailor the app to your specific needs. Set custom calorie limits and macronutrient ratios (Protein/Carbs/Fats) using **intuitive sliders**.
+- **Dynamic Recalculation**: BMI and macro goals are updated instantly as you change your metrics.
+- **Smart Defaults**: Provides recommended targets based on your weight and fitness objective.
+
+### 🗓️ Comprehensive History Management
+Access a detailed log of every meal and body scan. Filter your history by date or search for specific items to review your past choices and progress.
+- **Skeleton Loading**: Smooth transitions while filtering large history sets.
+- **Image Persistence**: Every log includes the original photo stored in the cloud.
+
+### 🔐 Secure & Private
+Your data is protected by **Firebase Authentication** and secured with strict Firestore rules. We support Google, GitHub, and Email/Password login methods.
+
+---
+
+## 🔑 APIs & Secrets
+
+To run NutriSnap AI, you need to configure the following environment variables and configuration files:
+
+### 1. Gemini API (`GEMINI_API_KEY`)
+- **Provider**: Google AI Studio
+- **Usage**: Powers the `analyzeFoodImage`, `analyzeBodyImage`, and `getAICoachResponse` services.
+- **Setup**: Obtain a key from [aistudio.google.com](https://aistudio.google.com/).
+
+### 2. Firebase Configuration (`firebase-applet-config.json`)
+- **Provider**: Google Firebase
+- **Usage**: Used for Authentication, Firestore (Database), and Cloud Storage.
+- **Required Services**:
+  - **Authentication**: Enable Google, GitHub, and Email/Password providers.
+  - **Firestore**: Create a database in "Native Mode".
+  - **Storage**: Enable a storage bucket for user uploads.
+
+### 3. GitHub OAuth (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`)
+- **Provider**: GitHub Developer Settings
+- **Usage**: Enables "Sign in with GitHub" functionality.
+- **Setup**: Create a new OAuth App on GitHub and set the callback URL to your app's domain.
+
+### 4. Google OAuth
+- **Provider**: Google Cloud Console
+- **Usage**: Enables "Sign in with Google" functionality.
+- **Setup**: Usually handled automatically by Firebase Auth once enabled in the Firebase Console.
+
+---
+
 ## 🏗 System Architecture
 
 The application follows a modern, serverless full-stack architecture optimized for low latency and high scalability.

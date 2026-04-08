@@ -92,6 +92,15 @@ export const uploadBodyImage = async (file: File): Promise<string> => {
   return downloadURL;
 };
 
+export const uploadScanImage = async (file: File): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("User not authenticated");
+  
+  const storageRef = ref(storage, `users/${user.uid}/scans/scan_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+};
+
 export const saveUserProfile = async (profile: Partial<UserProfile>) => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");
@@ -182,6 +191,26 @@ export const getDailySummary = (callback: (summary: DailySummary | null) => void
   }, (error) => {
     handleFirestoreError(error, OperationType.GET, path);
   });
+};
+
+export const getDailySummaryOnce = async (): Promise<DailySummary | null> => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+
+  const date = new Date().toISOString().split('T')[0];
+  const path = `users/${uid}/daily_summary/${date}`;
+  const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
+
+  try {
+    const snap = await getDoc(summaryDoc);
+    if (snap.exists()) {
+      return snap.data() as DailySummary;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
 };
 
 export const saveScanResult = async (scan: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>) => {

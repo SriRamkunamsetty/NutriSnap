@@ -13,6 +13,7 @@ const HistoryScreen: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedType, setSelectedType] = useState<string>('all');
   const [isFiltering, setIsFiltering] = useState(false);
   const navigate = useNavigate();
 
@@ -23,15 +24,16 @@ const HistoryScreen: React.FC = () => {
     const timer = setTimeout(() => {
       const filtered = scans.filter(item => {
         const matchesSearch = item.foodName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = selectedType === 'all' || item.type === selectedType;
         
-        if (!startDate && !endDate) return matchesSearch;
+        if (!startDate && !endDate) return matchesSearch && matchesType;
 
         const itemDate = new Date(item.timestamp);
         const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
         const end = endDate ? endOfDay(new Date(endDate)) : new Date();
 
         const matchesDate = isWithinInterval(itemDate, { start, end });
-        return matchesSearch && matchesDate;
+        return matchesSearch && matchesDate && matchesType;
       });
       setFilteredHistory(filtered);
       setIsFiltering(false);
@@ -50,91 +52,123 @@ const HistoryScreen: React.FC = () => {
   return (
     <div className="space-y-10 pb-10">
       <div className="space-y-6">
-        {/* Search Bar */}
-        <div className="space-y-4">
-          <div className="relative">
+        {/* Search and Filters Bar */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={18} strokeWidth={2.5} />
             <input 
               type="text" 
-              placeholder="Search your meals..." 
+              placeholder="Search meals..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full glass rounded-[24px] py-4 pl-14 pr-14 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all ios-shadow placeholder:text-gray-400"
+              className="w-full glass rounded-[24px] py-4 pl-14 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all ios-shadow placeholder:text-gray-400"
             />
+          </div>
+          
+          <div className="flex gap-2 items-center">
+            {/* Start Date Picker */}
+            <div className="relative group">
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => {
+                  triggerHaptic(hapticPatterns.light);
+                  setStartDate(e.target.value);
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ios-shadow border border-white/50 ${startDate ? 'bg-green-600 text-white' : 'glass text-gray-400'}`}>
+                <Calendar size={18} strokeWidth={2.5} />
+                {startDate && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />}
+              </div>
+            </div>
+
+            {/* End Date Picker */}
+            <div className="relative group">
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => {
+                  triggerHaptic(hapticPatterns.light);
+                  setEndDate(e.target.value);
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ios-shadow border border-white/50 ${endDate ? 'bg-green-600 text-white' : 'glass text-gray-400'}`}>
+                <Calendar size={18} strokeWidth={2.5} />
+                {endDate && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />}
+              </div>
+            </div>
+
+            {/* Filter Toggle */}
             <button 
               onClick={() => {
                 triggerHaptic(hapticPatterns.light);
                 setShowFilters(!showFilters);
               }}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl flex items-center justify-center transition-all ios-shadow ${showFilters ? 'bg-green-600 text-white' : 'glass text-gray-400'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ios-shadow border border-white/50 ${showFilters ? 'bg-green-600 text-white' : 'glass text-gray-400'}`}
             >
-              <Filter size={18} />
+              <Filter size={18} strokeWidth={2.5} />
             </button>
           </div>
+        </div>
 
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="glass-card p-8 rounded-[40px] space-y-6 border-white/50 ios-shadow mt-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} className="text-green-600" />
-                      <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Date Range Filter</h4>
-                    </div>
-                    {(startDate || endDate) && (
-                      <button 
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="glass-card p-8 rounded-[40px] space-y-6 border-white/50 ios-shadow mt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Filter size={16} className="text-green-600" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Advanced Filters</h4>
+                  </div>
+                  {(startDate || endDate || selectedType !== 'all') && (
+                    <button 
+                      onClick={() => {
+                        triggerHaptic(hapticPatterns.light);
+                        setStartDate('');
+                        setEndDate('');
+                        setSelectedType('all');
+                      }}
+                      className="text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-3 py-1 rounded-full border border-red-100 flex items-center gap-1 active:scale-95 transition-all"
+                    >
+                      Clear All <X size={12} />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Type Filter */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Scan Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['all', 'food', 'person', 'animal', 'other'].map((type) => (
+                      <button
+                        key={type}
                         onClick={() => {
                           triggerHaptic(hapticPatterns.light);
-                          setStartDate('');
-                          setEndDate('');
+                          setSelectedType(type);
                         }}
-                        className="text-[10px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-3 py-1 rounded-full border border-red-100 flex items-center gap-1 active:scale-95 transition-all"
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          selectedType === type 
+                            ? 'bg-green-600 text-white shadow-lg scale-105' 
+                            : 'glass text-gray-400 hover:text-gray-600'
+                        }`}
                       >
-                        Clear <X size={12} />
+                        {type}
                       </button>
-                    )}
+                    ))}
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Start Date</label>
-                      <div className="relative group">
-                        <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors" />
-                        <input 
-                          type="date" 
-                          value={startDate}
-                          onChange={(e) => {
-                            triggerHaptic(hapticPatterns.light);
-                            setStartDate(e.target.value);
-                          }}
-                          className="w-full glass rounded-2xl py-4 pl-10 pr-4 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all appearance-none"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">End Date</label>
-                      <div className="relative group">
-                        <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-500 transition-colors" />
-                        <input 
-                          type="date" 
-                          value={endDate}
-                          onChange={(e) => {
-                            triggerHaptic(hapticPatterns.light);
-                            setEndDate(e.target.value);
-                          }}
-                          className="w-full glass rounded-2xl py-4 pl-10 pr-4 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all appearance-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                </div>
 
-                  {/* Quick Filters */}
-                  <div className="flex flex-wrap gap-2 pt-2">
+                {/* Quick Date Filters */}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quick Date Range</label>
+                  <div className="flex flex-wrap gap-2">
                     {[
                       { label: 'Today', getValue: () => format(new Date(), 'yyyy-MM-dd') },
                       { label: 'Last 7 Days', getValue: () => format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd') },
@@ -153,25 +187,41 @@ const HistoryScreen: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  
-                  <p className="text-[10px] text-gray-400 font-medium leading-relaxed px-1">
-                    Showing results from <span className="text-gray-900 font-bold">{startDate || 'the beginning'}</span> to <span className="text-gray-900 font-bold">{endDate || 'today'}</span>.
-                  </p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed px-1">
+                  Showing results from <span className="text-gray-900 font-bold">{startDate || 'the beginning'}</span> to <span className="text-gray-900 font-bold">{endDate || 'today'}</span>.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* History List */}
       <div className="space-y-10 min-h-[400px] relative">
-        {isFiltering ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Filtering History...</p>
-          </div>
-        ) : Object.keys(groupedHistory).length === 0 ? (
+        <AnimatePresence mode="wait">
+          {isFiltering ? (
+            <motion.div 
+              key="loader"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 space-y-6"
+            >
+              <div className="relative w-20 h-20">
+                <div className="absolute inset-0 border-4 border-green-500/10 rounded-full" />
+                <div className="absolute inset-0 border-4 border-t-green-500 rounded-full animate-spin" />
+                <div className="absolute inset-4 bg-green-50 rounded-full flex items-center justify-center">
+                  <Apple size={24} className="text-green-500 animate-pulse" />
+                </div>
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-black text-gray-900 tracking-tight">Analyzing History</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Applying filters...</p>
+              </div>
+            </motion.div>
+          ) : Object.keys(groupedHistory).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
             <div className="w-24 h-24 glass rounded-[40px] flex items-center justify-center text-gray-300 ios-shadow border border-white/50">
               <Apple size={48} strokeWidth={1.5} />
@@ -234,6 +284,7 @@ const HistoryScreen: React.FC = () => {
             </div>
           ))
         )}
+        </AnimatePresence>
       </div>
     </div>
   );

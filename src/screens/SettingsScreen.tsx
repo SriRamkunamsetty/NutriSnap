@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets, Plus, X, Trash2, Bot } from 'lucide-react';
+import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets, Plus, X, Trash2, Bot, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
-import { saveUserProfile, uploadProfileImage, uploadAIAvatar, clearChatHistory, uploadBodyImage } from '../services/storageService';
+import { saveUserProfile, uploadProfileImage, uploadAIAvatar, clearChatHistory, uploadBodyImage, saveScanResult } from '../services/storageService';
 import { analyzeBodyImage } from '../services/geminiService';
+import { generateHealthReport } from '../services/pdfService';
 import { UserProfile, Goal, BodyType, Reminder } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { useUser } from '../contexts/UserContext';
@@ -17,7 +18,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const SettingsScreen: React.FC = () => {
-  const { profile, refreshProfile, dailySummary, updateProfile } = useUser();
+  const { profile, refreshProfile, dailySummary, updateProfile, scans } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
@@ -26,6 +27,9 @@ const SettingsScreen: React.FC = () => {
   const [showBMIInfo, setShowBMIInfo] = useState(false);
   const [showBodyScanSuccess, setShowBodyScanSuccess] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showReportSuccess, setShowReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const bodyInputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +174,20 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleInputChange = (field: string, value: any) => {
+    // Real-time validation for calorie limit
+    if (field === 'calorieLimit') {
+      const val = parseInt(value) || 0;
+      if (val < 1000 || val > 5000) {
+        setErrors(prev => ({ ...prev, calorieLimit: 'Calories must be between 1000 and 5000 kcal' }));
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.calorieLimit;
+          return newErrors;
+        });
+      }
+    }
+
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
       
@@ -185,6 +203,49 @@ const SettingsScreen: React.FC = () => {
         newData.carbsGoal = Math.round((calories * newData.carbsPct / 100) / 4);
         newData.fatsGoal = Math.round((calories * newData.fatsPct / 100) / 9);
       }
+      
+      return newData;
+    });
+  };
+
+  const handleMacroPctChange = (field: 'proteinPct' | 'carbsPct' | 'fatsPct', newValue: number) => {
+    setFormData(prev => {
+      const oldValue = prev[field];
+      const diff = newValue - oldValue;
+      
+      const others = (['proteinPct', 'carbsPct', 'fatsPct'] as const).filter(f => f !== field);
+      let newData = { ...prev, [field]: newValue };
+      
+      let remainingDiff = diff;
+      
+      // Try to subtract from the first other field
+      let firstOtherVal = prev[others[0]] - remainingDiff;
+      if (firstOtherVal < 0) {
+        remainingDiff = -firstOtherVal;
+        firstOtherVal = 0;
+      } else {
+        remainingDiff = 0;
+      }
+      
+      // Subtract remaining from the second other field
+      let secondOtherVal = prev[others[1]] - remainingDiff;
+      if (secondOtherVal < 0) {
+        // If we still have diff, it means we tried to increase the current field 
+        // more than the sum of others. Cap it.
+        const maxPossible = prev[field] + prev[others[0]] + prev[others[1]];
+        newData[field] = maxPossible;
+        newData[others[0]] = 0;
+        newData[others[1]] = 0;
+      } else {
+        newData[others[0]] = firstOtherVal;
+        newData[others[1]] = secondOtherVal;
+      }
+      
+      // Recalculate grams
+      const calories = newData.calorieLimit;
+      newData.proteinGoal = Math.round((calories * newData.proteinPct / 100) / 4);
+      newData.carbsGoal = Math.round((calories * newData.carbsPct / 100) / 4);
+      newData.fatsGoal = Math.round((calories * newData.fatsPct / 100) / 9);
       
       return newData;
     });
@@ -266,6 +327,20 @@ const SettingsScreen: React.FC = () => {
           fatEstimate: result.fatEstimate,
           bodyScanURL
         });
+
+        // 4. Save as a ScanResult for trend tracking
+        await saveScanResult({
+          foodName: 'Body Scan',
+          type: 'person',
+          description: `Body Type: ${result.bodyType}, Fat Estimate: ${result.fatEstimate}%`,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          fatEstimate: result.fatEstimate,
+          confidence: 1,
+          imageUrl: bodyScanURL
+        });
         
         setShowBodyScanSuccess(true);
         setTimeout(() => setShowBodyScanSuccess(false), 5000);
@@ -292,7 +367,8 @@ const SettingsScreen: React.FC = () => {
     try {
       const url = await uploadProfileImage(file);
       setFormData(prev => ({ ...prev, photoURL: url }));
-      await refreshProfile();
+      // Update global context for instant reactivity in other screens
+      await updateProfile({ photoURL: url });
       setIsUploadingProfile(false);
       triggerHaptic(hapticPatterns.success);
     } catch (error) {
@@ -339,6 +415,27 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  const handleDownloadReport = async () => {
+    if (!profile) return;
+    setIsGeneratingReport(true);
+    setReportError(null);
+    triggerHaptic(hapticPatterns.medium);
+    
+    try {
+      await generateHealthReport(profile, dailySummary, scans);
+      setShowReportSuccess(true);
+      triggerHaptic(hapticPatterns.success);
+      setTimeout(() => setShowReportSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to generate report", error);
+      setReportError("Failed to generate PDF report. Please try again.");
+      triggerHaptic(hapticPatterns.error);
+      setTimeout(() => setReportError(null), 4000);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   const handleSignOut = async () => {
     triggerHaptic(hapticPatterns.medium);
     try {
@@ -349,7 +446,33 @@ const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <div className="space-y-10 pb-10">
+    <div className="space-y-10 pb-10 relative">
+      {/* Global Success Banner for Body Scan */}
+      <AnimatePresence>
+        {showBodyScanSuccess && (
+          <motion.div 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 20, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-6 right-6 z-[100] glass-card bg-green-600 text-white p-6 rounded-[32px] shadow-2xl flex items-center gap-4 border-none"
+          >
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+              <Sparkles size={24} className="text-white animate-pulse" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-black text-lg tracking-tight">Scan Successful!</h4>
+              <p className="text-xs font-medium text-white/80">Your body metrics have been updated in your health index.</p>
+            </div>
+            <button 
+              onClick={() => setShowBodyScanSuccess(false)}
+              className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Profile Header */}
       <div className="flex flex-col items-center text-center space-y-4 pt-4">
         <div className="flex gap-8 items-end">
@@ -724,7 +847,15 @@ const SettingsScreen: React.FC = () => {
                   <Flame size={20} strokeWidth={2.5} />
                   <h4 className="font-bold text-gray-800 tracking-tight">Daily Calorie Limit</h4>
                 </div>
-                <span className="text-xl font-black text-gray-900">{formData.calorieLimit} <span className="text-xs text-gray-400 font-bold uppercase">kcal</span></span>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={formData.calorieLimit}
+                    onChange={(e) => handleInputChange('calorieLimit', parseInt(e.target.value) || 0)}
+                    className="text-xl font-black text-gray-900 bg-transparent focus:outline-none w-20 text-right"
+                  />
+                  <span className="text-xs text-gray-400 font-bold uppercase">kcal</span>
+                </div>
               </div>
               <input 
                 type="range" 
@@ -738,6 +869,52 @@ const SettingsScreen: React.FC = () => {
               {errors.calorieLimit && <p className="text-[8px] font-bold text-red-500 uppercase tracking-widest">{errors.calorieLimit}</p>}
             </div>
 
+            {/* Macronutrient Sliders */}
+            <div className="glass-card p-6 rounded-[32px] space-y-8 ios-shadow border border-white/50">
+              <div className="flex items-center gap-2 text-blue-500">
+                <Target size={20} strokeWidth={2.5} />
+                <h4 className="font-bold text-gray-800 tracking-tight">Macronutrient Split (%)</h4>
+              </div>
+              
+              <div className="space-y-6">
+                {[
+                  { label: 'Protein', field: 'proteinPct' as const, color: 'accent-blue-500', textColor: 'text-blue-500', grams: formData.proteinGoal },
+                  { label: 'Carbs', field: 'carbsPct' as const, color: 'accent-orange-500', textColor: 'text-orange-500', grams: formData.carbsGoal },
+                  { label: 'Fats', field: 'fatsPct' as const, color: 'accent-purple-500', textColor: 'text-purple-500', grams: formData.fatsGoal }
+                ].map((macro) => (
+                  <div key={macro.label} className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{macro.label}</span>
+                        <span className={cn("text-lg font-black", macro.textColor)}>{formData[macro.field]}%</span>
+                      </div>
+                      <span className="text-xs font-bold text-gray-400">{macro.grams}g</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="100" 
+                      value={formData[macro.field]}
+                      onChange={(e) => handleMacroPctChange(macro.field, parseInt(e.target.value))}
+                      className={cn("w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer", macro.color)}
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Percentage</span>
+                <span className={cn(
+                  "text-sm font-black px-3 py-1 rounded-full",
+                  (formData.proteinPct + formData.carbsPct + formData.fatsPct) === 100 
+                    ? "bg-green-100 text-green-600" 
+                    : "bg-red-100 text-red-600"
+                )}>
+                  {formData.proteinPct + formData.carbsPct + formData.fatsPct}%
+                </span>
+              </div>
+            </div>
+
             {/* Water Goal Slider */}
             <div className={cn(
               "glass-card p-6 rounded-[32px] space-y-6 ios-shadow border transition-colors",
@@ -746,18 +923,26 @@ const SettingsScreen: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-blue-500">
                   <Droplets size={20} strokeWidth={2.5} />
-                  <h4 className="font-bold text-gray-800 tracking-tight">Water Goal</h4>
+                  <h4 className="font-bold text-gray-800 tracking-tight">Daily Water Goal</h4>
                 </div>
-                <span className="text-xl font-black text-gray-900">{formData.waterGoal} <span className="text-xs text-gray-400 font-bold uppercase">ml</span></span>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="number" 
+                    value={formData.waterGoal}
+                    onChange={(e) => handleInputChange('waterGoal', parseInt(e.target.value) || 0)}
+                    className="text-xl font-black text-gray-900 bg-transparent focus:outline-none w-20 text-right"
+                  />
+                  <span className="text-xs text-gray-400 font-bold uppercase">ml</span>
+                </div>
               </div>
               <input 
                 type="range" 
                 min="500" 
                 max="10000" 
-                step="100"
+                step="250"
                 value={formData.waterGoal}
                 onChange={(e) => handleInputChange('waterGoal', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
               />
               {errors.waterGoal && <p className="text-[8px] font-bold text-red-500 uppercase tracking-widest">{errors.waterGoal}</p>}
             </div>
@@ -834,97 +1019,6 @@ const SettingsScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Macro Goals */}
-            <div className="grid grid-cols-1 gap-4">
-              <div className={cn(
-                "px-4 py-2 rounded-2xl text-center font-bold text-[10px] uppercase tracking-widest transition-all",
-                (formData.proteinPct + formData.carbsPct + formData.fatsPct) === 100 
-                  ? "bg-green-50 text-green-600 border border-green-100" 
-                  : "bg-red-50 text-red-600 border border-red-100 animate-pulse"
-              )}>
-                Macros Sum: {formData.proteinPct + formData.carbsPct + formData.fatsPct}% 
-                {(formData.proteinPct + formData.carbsPct + formData.fatsPct) !== 100 && " (Must be 100%)"}
-              </div>
-
-              {/* Protein Goal */}
-              <div className={cn(
-                "glass-card p-6 rounded-[32px] space-y-4 ios-shadow border transition-colors",
-                errors.proteinGoal ? "border-red-500 bg-red-50/10" : "border-white/50"
-              )}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-blue-500">
-                    <Beef size={20} strokeWidth={2.5} />
-                    <h4 className="font-bold text-gray-800 tracking-tight">Protein</h4>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-gray-900 leading-none">{formData.proteinGoal} <span className="text-[10px] text-gray-400 font-bold uppercase">g</span></p>
-                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">{formData.proteinPct}% of total</p>
-                  </div>
-                </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="1"
-                  value={formData.proteinPct}
-                  onChange={(e) => handleInputChange('proteinPct', parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-              </div>
-
-              {/* Carbs Goal */}
-              <div className={cn(
-                "glass-card p-6 rounded-[32px] space-y-4 ios-shadow border transition-colors",
-                errors.carbsGoal ? "border-red-500 bg-red-50/10" : "border-white/50"
-              )}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-orange-500">
-                    <Wheat size={20} strokeWidth={2.5} />
-                    <h4 className="font-bold text-gray-800 tracking-tight">Carbs</h4>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-gray-900 leading-none">{formData.carbsGoal} <span className="text-[10px] text-gray-400 font-bold uppercase">g</span></p>
-                    <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mt-1">{formData.carbsPct}% of total</p>
-                  </div>
-                </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="1"
-                  value={formData.carbsPct}
-                  onChange={(e) => handleInputChange('carbsPct', parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                />
-              </div>
-
-              {/* Fats Goal */}
-              <div className={cn(
-                "glass-card p-6 rounded-[32px] space-y-4 ios-shadow border transition-colors",
-                errors.fatsGoal ? "border-red-500 bg-red-50/10" : "border-white/50"
-              )}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-purple-500">
-                    <Droplets size={20} strokeWidth={2.5} />
-                    <h4 className="font-bold text-gray-800 tracking-tight">Fats</h4>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-gray-900 leading-none">{formData.fatsGoal} <span className="text-[10px] text-gray-400 font-bold uppercase">g</span></p>
-                    <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mt-1">{formData.fatsPct}% of total</p>
-                  </div>
-                </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="1"
-                  value={formData.fatsPct}
-                  onChange={(e) => handleInputChange('fatsPct', parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-              </div>
-            </div>
-
             <div className="flex gap-4 pt-4">
               <button 
                 onClick={() => {
@@ -955,6 +1049,36 @@ const SettingsScreen: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Health Report Section */}
+      <div className="glass-card p-8 rounded-[40px] space-y-6 ios-shadow border border-white/50">
+        <div className="flex items-center gap-3 text-blue-600">
+          <div className="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center">
+            <FileText size={20} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 tracking-tight">Health Report</h3>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Export your medical data</p>
+          </div>
+        </div>
+        
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Generate a comprehensive PDF report of your nutrition, scans, and health trends. Perfect for sharing with your doctor or nutritionist.
+        </p>
+
+        <button 
+          onClick={handleDownloadReport}
+          disabled={isGeneratingReport}
+          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/20 flex items-center justify-center gap-3 ios-tap hover:bg-blue-700 transition-all disabled:opacity-50"
+        >
+          {isGeneratingReport ? (
+            <Loader2 size={20} className="animate-spin" />
+          ) : (
+            <FileText size={20} strokeWidth={2.5} />
+          )}
+          {isGeneratingReport ? 'Generating Report...' : 'Download Health Report (PDF)'}
+        </button>
+      </div>
+
       <button 
         onClick={handleSignOut}
         className="w-full py-5 flex items-center justify-center gap-3 text-red-500 font-bold glass hover:bg-red-50 rounded-[32px] transition-all ios-shadow"
@@ -972,6 +1096,97 @@ const SettingsScreen: React.FC = () => {
           Clear AI Chat History
         </button>
       </div>
+
+      {/* BMI Info Modal */}
+      <AnimatePresence>
+        {showBMIInfo && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowBMIInfo(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass-card w-full max-w-sm p-8 rounded-[40px] relative z-10 space-y-6 ios-shadow border-white/50"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500/10 rounded-2xl flex items-center justify-center text-green-600">
+                    <Info size={20} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight">BMI Categories</h3>
+                </div>
+                <button 
+                  onClick={() => setShowBMIInfo(false)}
+                  className="w-10 h-10 glass rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { label: 'Underweight', range: '< 18.5', color: 'bg-blue-500' },
+                  { label: 'Healthy', range: '18.5 - 24.9', color: 'bg-green-500' },
+                  { label: 'Overweight', range: '25.0 - 29.9', color: 'bg-orange-500' },
+                  { label: 'Obese', range: '≥ 30.0', color: 'bg-red-500' }
+                ].map((cat) => (
+                  <div key={cat.label} className="flex items-center justify-between p-4 glass rounded-2xl border border-white/50">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-3 h-3 rounded-full", cat.color)} />
+                      <span className="text-sm font-bold text-gray-700">{cat.label}</span>
+                    </div>
+                    <span className="text-xs font-black text-gray-900">{cat.range}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-gray-400 font-medium leading-relaxed text-center px-2">
+                Body Mass Index (BMI) is a simple index of weight-for-height that is commonly used to classify underweight, overweight and obesity in adults.
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Report Success Toast */}
+      <AnimatePresence>
+        {showReportSuccess && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 left-6 right-6 z-[120]"
+          >
+            <div className="bg-green-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-green-500/50 backdrop-blur-xl">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText size={18} />
+              </div>
+              <p className="text-sm font-bold">Report downloaded successfully</p>
+            </div>
+          </motion.div>
+        )}
+        {reportError && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-24 left-6 right-6 z-[120]"
+          >
+            <div className="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-red-500/50 backdrop-blur-xl">
+              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                <X size={18} />
+              </div>
+              <p className="text-sm font-bold">{reportError}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Confirmation Modal */}
       <AnimatePresence>
@@ -1017,49 +1232,6 @@ const SettingsScreen: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* BMI Info Modal */}
-      <AnimatePresence>
-        {showBMIInfo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowBMIInfo(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glass-card w-full max-w-sm p-8 rounded-[40px] ios-shadow relative z-10 space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">BMI Categories</h3>
-                <button onClick={() => setShowBMIInfo(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-4">
-                {[
-                  { range: '< 18.5', label: 'Underweight', color: 'text-blue-500', bg: 'bg-blue-50' },
-                  { range: '18.5 - 24.9', label: 'Healthy', color: 'text-green-600', bg: 'bg-green-50' },
-                  { range: '25.0 - 29.9', label: 'Overweight', color: 'text-orange-500', bg: 'bg-orange-50' },
-                  { range: '≥ 30.0', label: 'Obese', color: 'text-red-500', bg: 'bg-red-50' }
-                ].map((cat) => (
-                  <div key={cat.label} className={cn("flex items-center justify-between p-4 rounded-2xl border border-white/50", cat.bg)}>
-                    <span className={cn("font-bold", cat.color)}>{cat.label}</span>
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{cat.range}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-gray-400 leading-relaxed text-center font-medium">
-                BMI is a simple index of weight-for-height that is commonly used to classify underweight, overweight and obesity in adults.
-              </p>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
