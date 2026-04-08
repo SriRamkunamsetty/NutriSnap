@@ -70,7 +70,16 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Load profile
         const p = await getUserProfile(currentUser.uid);
         if (p) {
-          setProfile(p);
+          setProfile({
+            ...p,
+            height: p.height || 175,
+            weight: p.weight || 70,
+            calorieLimit: p.calorieLimit || 2000,
+            waterGoal: p.waterGoal || 2500,
+            proteinGoal: p.proteinGoal || 150,
+            carbsGoal: p.carbsGoal || 200,
+            fatsGoal: p.fatsGoal || 67
+          });
         } else {
           // Create initial profile if doesn't exist
           const initialProfile: UserProfile = {

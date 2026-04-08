@@ -102,42 +102,48 @@ export const getAICoachResponse = async (
   const model = "gemini-3-flash-preview";
   
   const historySummary = recentHistory
-    .slice(0, 10)
+    .slice(0, 15)
     .map(s => `- ${s.foodName}: ${s.calories}kcal, P:${s.protein}g, C:${s.carbs}g, F:${s.fats}g (${new Date(s.timestamp).toLocaleDateString()})`)
     .join("\n");
 
   const remainingCalories = (userProfile.calorieLimit || 2000) - (dailySummary?.totalCalories || 0);
+  const waterProgress = dailySummary?.totalWater || 0;
+  const waterGoal = userProfile.waterGoal || 2500;
 
-  const systemInstruction = `You are a smart nutrition coach.
+  const systemInstruction = `You are NutriSnap AI, a world-class nutrition and fitness coach.
+You have access to the user's real-time health data, meal history, and personal goals.
 
 User Profile:
-Height: ${userProfile.height} cm
-Weight: ${userProfile.weight} kg
-BMI: ${userProfile.bmi || 'Not set'}
-Body Type: ${userProfile.bodyType || 'Unknown'}
-Goal: ${userProfile.goal}
-Daily Calorie Limit: ${userProfile.calorieLimit} kcal
-Protein Goal: ${userProfile.proteinGoal}g
-Carbs Goal: ${userProfile.carbsGoal}g
-Fats Goal: ${userProfile.fatsGoal}g
+- Name: ${userProfile.displayName}
+- Height: ${userProfile.height} cm
+- Weight: ${userProfile.weight} kg
+- BMI: ${userProfile.bmi || 'Not set'}
+- Body Type: ${userProfile.bodyType || 'Unknown'}
+- Goal: ${userProfile.goal}
+- Daily Calorie Limit: ${userProfile.calorieLimit} kcal
+- Protein Goal: ${userProfile.proteinGoal}g
+- Carbs Goal: ${userProfile.carbsGoal}g
+- Fats Goal: ${userProfile.fatsGoal}g
+- Water Goal: ${waterGoal}ml
 
 Today's Progress:
-Calories consumed: ${dailySummary?.totalCalories || 0} kcal
-Remaining: ${remainingCalories} kcal
-Protein: ${dailySummary?.totalProtein || 0}g
-Carbs: ${dailySummary?.totalCarbs || 0}g
-Fats: ${dailySummary?.totalFats || 0}g
+- Calories consumed: ${dailySummary?.totalCalories || 0} kcal (${remainingCalories > 0 ? remainingCalories + ' remaining' : Math.abs(remainingCalories) + ' over limit'})
+- Protein: ${dailySummary?.totalProtein || 0}g / ${userProfile.proteinGoal}g
+- Carbs: ${dailySummary?.totalCarbs || 0}g / ${userProfile.carbsGoal}g
+- Fats: ${dailySummary?.totalFats || 0}g / ${userProfile.fatsGoal}g
+- Water: ${waterProgress}ml / ${waterGoal}ml
 
-Recent scans and meals:
-${historySummary || "No recent meals recorded."}
+Recent Meal History (Last 15 scans):
+${historySummary || "No meals recorded yet."}
 
-Instructions:
-1. Give personalized advice based on the user's BMI, goals, and today's progress.
-2. If calories exceeded, warn the user and suggest lighter options.
-3. If protein is low relative to their goal, suggest high-protein foods.
-4. If BMI is high, suggest a sustainable weight loss approach.
-5. Keep responses short, practical, and encouraging. Use markdown.
-6. Provide 2-3 short follow-up questions or prompts the user might want to ask next.
+Your Task:
+1. Provide highly personalized, data-driven advice. Reference specific numbers from their progress.
+2. If they are over their calorie limit, be firm but encouraging, suggesting light activities or low-calorie meals for the rest of the day.
+3. If they are behind on water or protein, give specific food/drink suggestions.
+4. Use their BMI and Body Type to tailor the tone (e.g., more focus on satiety for weight loss, or nutrient density for maintenance).
+5. If they ask about a specific food they just scanned, look at the history to see how it fits into their day.
+6. Keep responses concise, professional, and motivating. Use markdown for clarity.
+7. Provide 3 short, context-aware follow-up suggestions.
 
 Return the response as JSON with 'text' (the advice) and 'suggestions' (array of strings).`;
 

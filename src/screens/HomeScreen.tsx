@@ -160,8 +160,12 @@ const HomeScreen: React.FC = () => {
     await logFood(manualMeal);
   };
 
-  const calorieProgress = profile ? (dailySummary?.totalCalories || 0) / profile.calorieLimit : 0;
-  const waterProgress = profile ? (dailySummary?.totalWater || 0) / (profile.waterGoal || 2500) : 0;
+  const calorieProgress = (profile?.calorieLimit && profile.calorieLimit > 0) 
+    ? (dailySummary?.totalCalories || 0) / profile.calorieLimit 
+    : 0;
+  const waterProgress = (profile?.waterGoal && profile.waterGoal > 0) 
+    ? (dailySummary?.totalWater || 0) / profile.waterGoal 
+    : (dailySummary?.totalWater || 0) / 2500;
 
   return (
     <div className="space-y-10 pb-10 pt-8">

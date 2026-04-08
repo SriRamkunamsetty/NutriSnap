@@ -73,9 +73,9 @@
       "schema": "User",
       "description": "User profile documents."
     },
-    "/scans/{scanId}": {
+    "/users/{userId}/scans/{scanId}": {
       "schema": "Scan",
-      "description": "Food scan results."
+      "description": "User's food scan results."
     },
     "/users/{userId}/messages/{messageId}": {
       "schema": "ChatMessage",

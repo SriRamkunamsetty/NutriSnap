@@ -174,14 +174,14 @@ export const saveScanResult = async (scan: Omit<ScanResult, 'id' | 'userId' | 't
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error("User not authenticated");
   
-  const path = 'scans';
+  const path = `users/${uid}/scans`;
   try {
     const scanData = {
       ...scan,
       userId: uid,
       timestamp: Timestamp.now(),
     };
-    const docRef = await addDoc(collection(db, 'scans'), scanData);
+    const docRef = await addDoc(collection(db, 'users', uid, 'scans'), scanData);
     
     // Update daily summary
     await updateDailySummary(scan);
@@ -196,10 +196,9 @@ export const getScanHistory = (callback: (scans: ScanResult[]) => void) => {
   const uid = auth.currentUser?.uid;
   if (!uid) return () => {};
   
-  const path = 'scans';
+  const path = `users/${uid}/scans`;
   const q = query(
-    collection(db, 'scans'),
-    where('userId', '==', uid),
+    collection(db, 'users', uid, 'scans'),
     orderBy('timestamp', 'desc'),
     limit(50)
   );

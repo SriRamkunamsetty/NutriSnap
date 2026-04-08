@@ -19,7 +19,7 @@ service cloud.firestore {
     //   - calorieLimit: number
     //   - createdAt: timestamp
     //
-    // Collection: scans
+    // Collection: users/{userId}/scans
     // Document ID: scanId
     // Fields:
     //   - userId: string (required)
@@ -62,7 +62,7 @@ service cloud.firestore {
     }
 
     function isValidEmail(email) {
-      return email is string && email.matches("^.+@.+\\..+$");
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
     }
 
     function isValidUrl(url) {
@@ -78,38 +78,51 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+      let requiredFields = ['uid', 'email', 'updatedAt'];
+      let allowedFields = [
+        'uid', 'email', 'displayName', 'photoURL', 'height', 'weight', 
+        'bmi', 'bodyType', 'fatEstimate', 'goal', 'calorieLimit', 
+        'aiAvatarURL', 'createdAt', 'lastLoginAt', 'updatedAt', 'hasCompletedOnboarding',
+        'waterGoal', 'proteinGoal', 'carbsGoal', 'fatsGoal', 'reminders', 'theme'
+      ];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
              data.uid == request.auth.uid &&
              isValidEmail(data.email) &&
-             (data.get('displayName', null) == null || data.displayName is string) &&
-             (data.get('photoURL', null) == null || data.photoURL == "" || isValidUrl(data.photoURL)) &&
-             (data.get('height', null) == null || data.height is number) &&
-             (data.get('weight', null) == null || data.weight is number) &&
-             (data.get('bmi', null) == null || data.bmi is number) &&
-             (data.get('bodyType', null) == null || data.bodyType in ['lean', 'normal', 'obese', 'unknown']) &&
-             (data.get('fatEstimate', null) == null || data.fatEstimate is number) &&
-             (data.get('goal', null) == null || data.goal in ['lose', 'maintain', 'gain']) &&
-             (data.get('calorieLimit', null) == null || data.calorieLimit is number) &&
-             (data.get('createdAt', null) == null || data.createdAt is timestamp || data.createdAt is string) &&
-             (data.get('lastLoginAt', null) == null || data.lastLoginAt is timestamp || data.lastLoginAt is string) &&
+             (data.get('displayName', '') is string && data.get('displayName', '').size() < 100) &&
+             (data.get('photoURL', '') == '' || isValidUrl(data.get('photoURL', ''))) &&
+             (data.get('height', 0) is number && data.get('height', 0) >= 0 && data.get('height', 0) < 300) &&
+             (data.get('weight', 0) is number && data.get('weight', 0) >= 0 && data.get('weight', 0) < 1000) &&
+             (data.get('bmi', 0) is number) &&
+             (data.get('bodyType', 'unknown') in ['lean', 'normal', 'obese', 'unknown']) &&
+             (data.get('fatEstimate', 0) is number) &&
+             (data.get('goal', 'maintain') in ['lose', 'maintain', 'gain']) &&
+             (data.get('calorieLimit', 0) is number && data.get('calorieLimit', 0) >= 0 && data.get('calorieLimit', 0) < 10000) &&
              (data.updatedAt is timestamp);
     }
 
     function isValidScan(data) {
-      return data.keys().hasAll(['userId', 'foodName', 'calories', 'timestamp']) &&
+      let requiredFields = ['userId', 'foodName', 'calories', 'timestamp'];
+      let allowedFields = [
+        'userId', 'foodName', 'calories', 'timestamp', 'protein', 'carbs', 
+        'fats', 'confidence', 'imageUrl', 'type', 'description', 'details'
+      ];
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
              data.userId == request.auth.uid &&
              data.foodName is string && data.foodName.size() > 0 && data.foodName.size() < 200 &&
-             data.calories is number && data.calories >= 0 &&
-             (data.get('protein', null) == null || data.protein is number) &&
-             (data.get('carbs', null) == null || data.carbs is number) &&
-             (data.get('fats', null) == null || data.fats is number) &&
-             (data.get('confidence', null) == null || data.confidence is number) &&
-             (data.get('imageUrl', null) == null || isValidUrl(data.imageUrl)) &&
+             data.calories is number && data.calories >= 0 && data.calories < 5000 &&
+             (data.get('protein', 0) is number && data.get('protein', 0) >= 0) &&
+             (data.get('carbs', 0) is number && data.get('carbs', 0) >= 0) &&
+             (data.get('fats', 0) is number && data.get('fats', 0) >= 0) &&
+             (data.get('confidence', 0) is number && data.get('confidence', 0) >= 0 && data.get('confidence', 0) <= 1) &&
+             (data.get('imageUrl', '') == '' || isValidUrl(data.get('imageUrl', ''))) &&
              data.timestamp is timestamp;
     }
 
     function isValidMessage(data) {
-      return data.keys().hasAll(['userId', 'role', 'text', 'timestamp']) &&
+      let requiredFields = ['userId', 'role', 'text', 'timestamp'];
+      return data.keys().hasAll(requiredFields) &&
              data.userId == request.auth.uid &&
              data.role in ['user', 'model'] &&
              data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
@@ -118,7 +131,7 @@ service cloud.firestore {
 
     function isValidDailySummary(data) {
       return data.keys().hasAll(['date']) &&
-             data.date is string &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
              (data.get('totalCalories', 0) is number) &&
              (data.get('totalProtein', 0) is number) &&
              (data.get('totalCarbs', 0) is number) &&
@@ -133,26 +146,27 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
-    }
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && 
+                      (request.resource.data.uid == resource.data.uid); // UID is immutable
 
-    match /scans/{scanId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && isValidScan(request.resource.data);
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidScan(request.resource.data);
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-    }
+      match /scans/{scanId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidScan(request.resource.data);
+        allow update: if isOwner(userId) && isValidScan(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
 
-    match /users/{userId}/messages/{messageId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidMessage(request.resource.data);
-      allow update: if isOwner(userId) && isValidMessage(request.resource.data);
-      allow delete: if isOwner(userId);
-    }
+      match /messages/{messageId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow update: if isOwner(userId) && isValidMessage(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
 
-    match /users/{userId}/daily_summary/{date} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId) && isValidDailySummary(request.resource.data);
+      match /daily_summary/{date} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && isValidDailySummary(request.resource.data);
+      }
     }
 
     // Default deny

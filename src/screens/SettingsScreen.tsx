@@ -488,7 +488,7 @@ const SettingsScreen: React.FC = () => {
             
             <motion.div 
               initial={{ width: 0 }}
-              animate={{ width: `${Math.min((bmi / 40) * 100, 100)}%` }}
+              animate={{ width: `${Math.min((bmi / 40) * 100, 100) || 0}%` }}
               className={cn(
                 "h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,0,0,0.1)]",
                 bmiDetails.barColor

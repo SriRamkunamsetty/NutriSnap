@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp, Calendar, PieChart, Activity, Apple, Zap, Droplets, Flame, ChevronRight, Info, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useUser } from '../contexts/UserContext';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ComposedChart, Line, Legend } from 'recharts';
 import { format, subDays, isSameDay } from 'date-fns';
 
 const AnalyticsScreen: React.FC = () => {
@@ -44,7 +44,54 @@ const AnalyticsScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* Weekly Trend Chart */}
+      {/* Daily Summary Overview */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card p-8 rounded-[40px] ios-shadow bg-gradient-to-br from-green-500 to-green-600 text-white space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity size={20} strokeWidth={2.5} />
+            <h3 className="text-sm font-bold uppercase tracking-widest">Daily Summary</h3>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">{format(new Date(), 'EEEE, MMM d')}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-8">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Calories</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-black">{dailySummary?.totalCalories || 0}</span>
+              <span className="text-xs font-bold opacity-70">/ {profile?.calorieLimit || 2000} kcal</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-70">Water</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-3xl font-black">{dailySummary?.totalWater || 0}</span>
+              <span className="text-xs font-bold opacity-70">/ {profile?.waterGoal || 2500} ml</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+          <div className="space-y-0.5">
+            <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Protein</p>
+            <p className="text-sm font-black">{dailySummary?.totalProtein || 0}g</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Carbs</p>
+            <p className="text-sm font-black">{dailySummary?.totalCarbs || 0}g</p>
+          </div>
+          <div className="space-y-0.5">
+            <p className="text-[8px] font-bold uppercase tracking-widest opacity-70">Fats</p>
+            <p className="text-sm font-black">{dailySummary?.totalFats || 0}g</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Weekly Trend Chart - Enhanced */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -53,14 +100,31 @@ const AnalyticsScreen: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Activity className="text-green-500" size={18} strokeWidth={2.5} />
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Weekly Calories</h3>
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-widest">Weekly Trends</h3>
           </div>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last 7 Days</span>
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Kcal</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">P</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">C</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">F</span>
+            </div>
+          </div>
         </div>
 
-        <div className="h-48 w-full">
+        <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyData}>
+            <ComposedChart data={weeklyData}>
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
@@ -68,34 +132,70 @@ const AnalyticsScreen: React.FC = () => {
                 tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
                 dy={10}
               />
+              <YAxis yAxisId="left" hide />
+              <YAxis yAxisId="right" hide />
               <Tooltip 
                 cursor={{ fill: 'rgba(0,0,0,0.02)' }}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    const goals = {
+                      calories: profile?.calorieLimit || 2000,
+                      protein: profile?.proteinGoal || 150,
+                      carbs: profile?.carbsGoal || 250,
+                      fats: profile?.fatsGoal || 70
+                    };
+
                     return (
-                      <div className="glass p-3 rounded-2xl border border-white/50 shadow-xl">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{payload[0].payload.fullDate}</p>
-                        <p className="text-lg font-black text-gray-900">{payload[0].value} <span className="text-[10px] text-gray-400">kcal</span></p>
+                      <div className="glass p-4 rounded-2xl border border-white/50 shadow-xl space-y-3 min-w-[160px]">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2">{data.fullDate}</p>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Calories</span>
+                            <div className="text-right">
+                              <p className="text-sm font-black text-gray-900">{data.calories} kcal</p>
+                              <p className="text-[8px] font-bold text-gray-400">{Math.round((data.calories / goals.calories) * 100)}% of goal</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50">
+                            <div className="text-center">
+                              <p className="text-[8px] font-bold text-blue-500 uppercase">Prot</p>
+                              <p className="text-[10px] font-black text-gray-900">{data.protein}g</p>
+                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.protein / goals.protein) * 100)}%</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[8px] font-bold text-orange-500 uppercase">Carb</p>
+                              <p className="text-[10px] font-black text-gray-900">{data.carbs}g</p>
+                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.carbs / goals.carbs) * 100)}%</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[8px] font-bold text-purple-500 uppercase">Fat</p>
+                              <p className="text-[10px] font-black text-gray-900">{data.fats}g</p>
+                              <p className="text-[7px] font-bold text-gray-400">{Math.round((data.fats / goals.fats) * 100)}%</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     );
                   }
                   return null;
                 }}
               />
-              <Bar 
+              <Bar yAxisId="right" dataKey="protein" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={6} />
+              <Bar yAxisId="right" dataKey="carbs" fill="#F97316" radius={[4, 4, 0, 0]} barSize={6} />
+              <Bar yAxisId="right" dataKey="fats" fill="#A855F7" radius={[4, 4, 0, 0]} barSize={6} />
+              <Line 
+                yAxisId="left" 
+                type="monotone" 
                 dataKey="calories" 
-                radius={[6, 6, 6, 6]}
-                barSize={24}
-              >
-                {weeklyData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.calories > (profile?.calorieLimit || 2000) ? '#EF4444' : '#22C55E'} 
-                    fillOpacity={index === 6 ? 1 : 0.4}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
+                stroke="#22C55E" 
+                strokeWidth={3} 
+                dot={{ fill: '#22C55E', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </motion.div>
