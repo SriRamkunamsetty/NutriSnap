@@ -5,15 +5,6 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -24,21 +15,6 @@ class DefaultFirebaseOptions {
         return android;
       case TargetPlatform.iOS:
         return ios;
-      case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
-      case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
-      case TargetPlatform.linux:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -48,27 +24,27 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyBnDJmhwxSoLC6bf3Zc78e-yEfNWkAS6u0',
-    appId: '1:196261243537:web:10809f57f0994b30f8ad30',
-    messagingSenderId: '196261243537',
-    projectId: 'gen-lang-client-0654629425',
-    authDomain: 'gen-lang-client-0654629425.firebaseapp.com',
-    storageBucket: 'gen-lang-client-0654629425.firebasestorage.app',
+    appId: '1:799302501650:web:placeholder', // Update this from your Firebase Web App settings
+    messagingSenderId: '799302501650',
+    projectId: 'nutrisnap-3bf24',
+    authDomain: 'nutrisnap-3bf24.firebaseapp.com',
+    storageBucket: 'nutrisnap-3bf24.appspot.com',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBnDJmhwxSoLC6bf3Zc78e-yEfNWkAS6u0',
-    appId: '1:196261243537:android:placeholder', // Replace with actual Android App ID from Firebase Console
-    messagingSenderId: '196261243537',
-    projectId: 'gen-lang-client-0654629425',
-    storageBucket: 'gen-lang-client-0654629425.firebasestorage.app',
+    appId: '1:799302501650:android:5befcaa0cef90b27fd5fcb',
+    messagingSenderId: '799302501650',
+    projectId: 'nutrisnap-3bf24',
+    storageBucket: 'nutrisnap-3bf24.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBnDJmhwxSoLC6bf3Zc78e-yEfNWkAS6u0',
-    appId: '1:196261243537:ios:placeholder', // Replace with actual iOS App ID from Firebase Console
-    messagingSenderId: '196261243537',
-    projectId: 'gen-lang-client-0654629425',
-    storageBucket: 'gen-lang-client-0654629425.firebasestorage.app',
-    iosBundleId: 'com.example.nutrisnapAi',
+    appId: '1:799302501650:ios:placeholder', // Update this from your Firebase iOS App settings
+    messagingSenderId: '799302501650',
+    projectId: 'nutrisnap-3bf24',
+    storageBucket: 'nutrisnap-3bf24.appspot.com',
+    iosBundleId: 'nutrisnap.sri',
   );
 }

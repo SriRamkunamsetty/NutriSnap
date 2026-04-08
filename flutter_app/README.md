@@ -10,16 +10,12 @@ This is the complete Flutter implementation of the NutriSnap AI project, designe
 - [Gemini API Key](https://aistudio.google.com/app/apikey).
 
 ### 2. Firebase Configuration
-The app is pre-configured with the project ID `gen-lang-client-0654629425`. However, for local mobile runs, you must register the Android and iOS apps in your Firebase console:
+The app is now **fully configured** with the credentials from your screenshot (`nutrisnap-3bf24`). 
 
-1.  **Android**:
-    - Register `com.example.nutrisnapAi` in Firebase.
-    - Download `google-services.json` and place it in `android/app/`.
-2.  **iOS**:
-    - Register `com.example.nutrisnapAi` in Firebase.
-    - Download `GoogleService-Info.plist` and place it in `ios/Runner/`.
+- **Android**: The `google-services.json` is already created in `android/app/` with your App ID (`1:799302501650:android:5befcaa0cef90b27fd5fcb`) and Package Name (`nutrisnap.sri`).
+- **iOS**: The `firebase_options.dart` is updated with your project details.
 
-Alternatively, update `lib/firebase_options.dart` with the specific `appId` values generated for your platforms.
+You can now run the app directly without manual ID replacement.
 
 ### 3. Gemini API Key
 Open `lib/screens/chat_screen.dart` and replace `'YOUR_GEMINI_API_KEY'` with your actual API key from Google AI Studio.

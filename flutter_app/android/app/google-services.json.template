@@ -1,0 +1,28 @@
+{
+  "project_info": {
+    "project_number": "196261243537",
+    "project_id": "gen-lang-client-0654629425",
+    "storage_bucket": "gen-lang-client-0654629425.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:196261243537:android:REPLACE_WITH_YOUR_ANDROID_APP_ID",
+        "android_client_info": {
+          "package_name": "com.example.nutrisnapAi"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnDJmhwxSoLC6bf3Zc78e-yEfNWkAS6u0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
