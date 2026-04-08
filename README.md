@@ -62,6 +62,62 @@ graph TD
 - **Charts**: Recharts for historical data visualization.
 - **Styling**: Tailwind CSS 4.0 with custom glassmorphism themes.
 
+## 🚀 Getting Started
+
+To run NutriSnap AI locally or in a development environment, follow these steps:
+
+### Prerequisites
+- **Node.js**: Version 18 or higher.
+- **Firebase Project**: A Firebase project with Authentication (Google, GitHub, Email), Firestore, and Storage enabled.
+- **Gemini API Key**: An API key from [Google AI Studio](https://aistudio.google.com/).
+
+### Installation
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd nutrisnap-ai
+   ```
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Configure Environment Variables**:
+   Copy `.env.example` to `.env` and fill in the required values:
+   ```bash
+   cp .env.example .env
+   ```
+   - `GEMINI_API_KEY`: Your Gemini API key.
+   - `GITHUB_CLIENT_ID`: Your GitHub OAuth Client ID.
+   - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth Client Secret.
+
+4. **Firebase Configuration**:
+   Ensure `firebase-applet-config.json` contains your Firebase project credentials.
+
+5. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+   The app will be available at `http://localhost:3000`.
+
+## 📁 Project Structure
+
+```text
+├── src/
+│   ├── components/       # Reusable UI components (Layout, Progress, etc.)
+│   ├── contexts/         # React Contexts (UserContext for global state)
+│   ├── lib/              # Utility libraries (Haptics, Notifications, Utils)
+│   ├── screens/          # Main application screens (Home, Analytics, Chat, etc.)
+│   ├── services/         # API and Storage services (Gemini, Firebase)
+│   ├── types/            # TypeScript interfaces and types
+│   ├── App.tsx           # Main application entry and Auth routing
+│   ├── firebase.ts       # Firebase initialization
+│   └── index.css         # Global styles and Tailwind imports
+├── firebase-blueprint.json # Data schema definition
+├── firestore.rules       # Security rules for Firestore
+├── metadata.json         # App metadata and permissions
+└── package.json          # Dependencies and scripts
+```
+
 ## 🔑 APIs & Configuration
 
 - **Gemini API**: Accessed via `process.env.GEMINI_API_KEY`. Used for `generateContent` (text/chat) and multimodal image analysis.

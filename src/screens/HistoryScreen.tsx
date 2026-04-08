@@ -13,20 +13,32 @@ const HistoryScreen: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isFiltering, setIsFiltering] = useState(false);
   const navigate = useNavigate();
 
-  const filteredHistory = scans.filter(item => {
-    const matchesSearch = item.foodName.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!startDate && !endDate) return matchesSearch;
+  const [filteredHistory, setFilteredHistory] = useState<ScanResult[]>(scans);
 
-    const itemDate = new Date(item.timestamp);
-    const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
-    const end = endDate ? endOfDay(new Date(endDate)) : new Date();
+  React.useEffect(() => {
+    setIsFiltering(true);
+    const timer = setTimeout(() => {
+      const filtered = scans.filter(item => {
+        const matchesSearch = item.foodName.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (!startDate && !endDate) return matchesSearch;
 
-    const matchesDate = isWithinInterval(itemDate, { start, end });
-    return matchesSearch && matchesDate;
-  });
+        const itemDate = new Date(item.timestamp);
+        const start = startDate ? startOfDay(new Date(startDate)) : new Date(0);
+        const end = endDate ? endOfDay(new Date(endDate)) : new Date();
+
+        const matchesDate = isWithinInterval(itemDate, { start, end });
+        return matchesSearch && matchesDate;
+      });
+      setFilteredHistory(filtered);
+      setIsFiltering(false);
+    }, 300); // Small delay to show loader
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, startDate, endDate, scans]);
 
   const groupedHistory = filteredHistory.reduce((acc, item) => {
     const date = format(new Date(item.timestamp), 'MMMM d, yyyy');
@@ -153,8 +165,13 @@ const HistoryScreen: React.FC = () => {
       </div>
 
       {/* History List */}
-      <div className="space-y-10">
-        {Object.keys(groupedHistory).length === 0 ? (
+      <div className="space-y-10 min-h-[400px] relative">
+        {isFiltering ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="w-12 h-12 border-4 border-green-500/20 border-t-green-500 rounded-full animate-spin" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Filtering History...</p>
+          </div>
+        ) : Object.keys(groupedHistory).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
             <div className="w-24 h-24 glass rounded-[40px] flex items-center justify-center text-gray-300 ios-shadow border border-white/50">
               <Apple size={48} strokeWidth={1.5} />

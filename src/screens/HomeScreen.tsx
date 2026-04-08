@@ -184,7 +184,10 @@ const HomeScreen: React.FC = () => {
           >
             <Search size={20} />
           </button>
-          <div className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap">
+          <button 
+            onClick={() => navigate('/settings')}
+            className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
+          >
             {profile?.photoURL ? (
               <img 
                 src={profile.photoURL} 
@@ -196,7 +199,7 @@ const HomeScreen: React.FC = () => {
               <User size={20} className="text-gray-400" />
             )}
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
-          </div>
+          </button>
         </div>
       </div>
 
@@ -287,25 +290,25 @@ const HomeScreen: React.FC = () => {
           </div>
         </div>
 
-        <div className="h-32 bg-gray-100/50 rounded-[40px] overflow-hidden border border-white/20 relative z-10 group shadow-inner">
+        <div className="h-40 bg-slate-50 rounded-[40px] overflow-hidden border border-white/20 relative z-10 group shadow-inner">
           {/* Liquid Fill */}
           <motion.div 
             initial={{ height: 0 }}
             animate={{ height: `${Math.min(waterProgress * 100, 100)}%` }}
             transition={{ type: 'spring', damping: 25, stiffness: 40 }}
-            className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-blue-400 to-blue-600"
+            className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600"
           >
             {/* Primary Wave */}
             <motion.div 
               animate={{ 
-                x: [-100, 0],
+                x: [-200, 0],
               }}
               transition={{ 
-                duration: 3, 
+                duration: 4, 
                 repeat: Infinity, 
                 ease: "linear" 
               }}
-              className="absolute -top-6 left-0 w-[200%] h-12 opacity-50"
+              className="absolute -top-8 left-0 w-[400%] h-16 opacity-60"
             >
               <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-400">
                 <path d="M0,50 C150,100 350,0 500,50 C650,100 850,0 1000,50 L1000,100 L0,100 Z" />
@@ -315,54 +318,80 @@ const HomeScreen: React.FC = () => {
             {/* Secondary Wave */}
             <motion.div 
               animate={{ 
-                x: [0, -100],
+                x: [0, -200],
               }}
               transition={{ 
-                duration: 5, 
+                duration: 6, 
                 repeat: Infinity, 
                 ease: "linear" 
               }}
-              className="absolute -top-4 left-0 w-[200%] h-10 opacity-30"
+              className="absolute -top-6 left-0 w-[400%] h-14 opacity-40"
             >
               <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-300">
                 <path d="M0,50 C150,0 350,100 500,50 C650,0 850,100 1000,50 L1000,100 L0,100 Z" />
               </svg>
             </motion.div>
 
+            {/* Tertiary Wave (Live Liquid Effect) */}
+            <motion.div 
+              animate={{ 
+                x: [-150, 50],
+                y: [0, 5, 0]
+              }}
+              transition={{ 
+                x: { duration: 8, repeat: Infinity, ease: "linear" },
+                y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+              }}
+              className="absolute -top-10 left-0 w-[400%] h-20 opacity-20"
+            >
+              <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-white">
+                <path d="M0,50 C150,80 350,20 500,50 C650,80 850,20 1000,50 L1000,100 L0,100 Z" />
+              </svg>
+            </motion.div>
+
             {/* Bubbles */}
-            {[...Array(5)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <motion.div
                 key={i}
                 animate={{
-                  y: [-20, -120],
-                  opacity: [0, 1, 0],
-                  x: [0, (i - 2) * 10]
+                  y: [20, -150],
+                  opacity: [0, 0.6, 0],
+                  x: [0, (i - 4) * 15],
+                  scale: [0.5, 1.2, 0.8]
                 }}
                 transition={{
-                  duration: 2 + Math.random() * 2,
+                  duration: 3 + Math.random() * 3,
                   repeat: Infinity,
-                  delay: Math.random() * 2
+                  delay: Math.random() * 4,
+                  ease: "easeOut"
                 }}
-                className="absolute bottom-0 w-1 h-1 bg-white/40 rounded-full"
-                style={{ left: `${20 + i * 15}%` }}
+                className="absolute bottom-0 w-2 h-2 bg-white/30 rounded-full blur-[1px]"
+                style={{ left: `${10 + i * 12}%` }}
               />
             ))}
           </motion.div>
 
           {/* Percentage Display Overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className={cn(
-              "text-4xl font-black transition-colors duration-500 tracking-tighter",
-              waterProgress > 0.4 ? "text-white" : "text-blue-600"
-            )}>
-              {Math.round(waterProgress * 100)}%
-            </span>
-            <span className={cn(
-              "text-[10px] font-bold uppercase tracking-widest transition-colors duration-500",
-              waterProgress > 0.4 ? "text-white/60" : "text-blue-400"
-            )}>
-              Daily Goal
-            </span>
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              key={waterProgress}
+              className="text-center"
+            >
+              <span className={cn(
+                "text-5xl font-black transition-colors duration-700 tracking-tighter drop-shadow-sm",
+                waterProgress > 0.45 ? "text-white" : "text-blue-600"
+              )}>
+                {Math.round(waterProgress * 100)}%
+              </span>
+              <p className={cn(
+                "text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-700 mt-1",
+                waterProgress > 0.45 ? "text-white/70" : "text-blue-400"
+              )}>
+                Daily Goal
+              </p>
+            </motion.div>
           </div>
         </div>
 

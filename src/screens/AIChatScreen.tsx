@@ -53,6 +53,13 @@ const AIChatScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
 
     try {
+      await refreshProfile();
+      
+      // Use the latest context data directly to ensure AI has most recent state
+      // Note: context values might still be stale in the current render cycle, 
+      // but refreshProfile ensures the underlying data is updated in Firestore.
+      // The getAICoachResponse will use the values passed to it.
+      
       await saveChatMessage('user', messageText);
       const result = await getAICoachResponse(
         [...messages, { role: 'user', text: messageText } as any].map(m => ({ role: m.role, text: m.text })),

@@ -78,6 +78,20 @@ export const uploadAIAvatar = async (file: File): Promise<string> => {
   return downloadURL;
 };
 
+export const uploadBodyImage = async (file: File): Promise<string> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error("User not authenticated");
+  
+  const storageRef = ref(storage, `users/${user.uid}/body_scans/scan_${Date.now()}`);
+  await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(storageRef);
+  
+  // Update profile with new bodyScanURL
+  await saveUserProfile({ bodyScanURL: downloadURL });
+  
+  return downloadURL;
+};
+
 export const saveUserProfile = async (profile: Partial<UserProfile>) => {
   const user = auth.currentUser;
   if (!user) throw new Error("User not authenticated");

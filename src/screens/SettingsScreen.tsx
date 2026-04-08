@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets, Plus, X, Trash2, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth } from '../firebase';
-import { saveUserProfile, uploadProfileImage, uploadAIAvatar, clearChatHistory } from '../services/storageService';
+import { saveUserProfile, uploadProfileImage, uploadAIAvatar, clearChatHistory, uploadBodyImage } from '../services/storageService';
 import { analyzeBodyImage } from '../services/geminiService';
 import { UserProfile, Goal, BodyType, Reminder } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
@@ -17,13 +17,14 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const SettingsScreen: React.FC = () => {
-  const { profile, refreshProfile } = useUser();
+  const { profile, refreshProfile, dailySummary, updateProfile } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
   const [isUploadingAIAvatar, setIsUploadingAIAvatar] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showBMIInfo, setShowBMIInfo] = useState(false);
+  const [showBodyScanSuccess, setShowBodyScanSuccess] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,7 +102,6 @@ const SettingsScreen: React.FC = () => {
     return Math.round((w / Math.pow(h / 100, 2)) * 10) / 10;
   };
 
-  const bmi = calculateBMI(formData.height, formData.weight);
   
   const getBMIDetails = (bmiValue: number) => {
     if (bmiValue < 18.5) return { label: 'Underweight', color: 'text-blue-500', bg: 'bg-blue-50/50', border: 'border-blue-100', barColor: 'bg-blue-500' };
@@ -110,7 +110,7 @@ const SettingsScreen: React.FC = () => {
     return { label: 'Obese', color: 'text-red-500', bg: 'bg-red-50/50', border: 'border-red-100', barColor: 'bg-red-500' };
   };
 
-  const bmiDetails = getBMIDetails(bmi);
+  const bmiDetails = getBMIDetails(formData.bmi);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -154,9 +154,11 @@ const SettingsScreen: React.FC = () => {
     }
     triggerHaptic(hapticPatterns.medium);
     try {
+      // Final BMI check before save
+      const finalBMI = calculateBMI(formData.height, formData.weight);
       await saveUserProfile({
         ...formData,
-        bmi
+        bmi: finalBMI
       });
       setIsEditing(false);
       await refreshProfile();
@@ -170,6 +172,11 @@ const SettingsScreen: React.FC = () => {
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
+      
+      // If height or weight change, update BMI
+      if (['height', 'weight'].includes(field)) {
+        newData.bmi = calculateBMI(newData.height, newData.weight);
+      }
       
       // If calorie limit or percentages change, update grams
       if (['calorieLimit', 'proteinPct', 'carbsPct', 'fatsPct'].includes(field)) {
@@ -235,23 +242,41 @@ const SettingsScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
     
     try {
+      // 1. Upload the image first
+      const bodyScanURL = await uploadBodyImage(file);
+      
+      // 2. Analyze the image
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
         const result = await analyzeBodyImage(base64, file.type);
         
-        setFormData(prev => ({
-          ...prev,
+        const updatedData = {
+          ...formData,
           bodyType: result.bodyType as BodyType,
-          fatEstimate: result.fatEstimate
-        }));
+          fatEstimate: result.fatEstimate,
+          bodyScanURL
+        };
+        
+        setFormData(updatedData);
+        
+        // 3. Save to Firestore immediately
+        await saveUserProfile({
+          bodyType: result.bodyType as BodyType,
+          fatEstimate: result.fatEstimate,
+          bodyScanURL
+        });
+        
+        setShowBodyScanSuccess(true);
+        setTimeout(() => setShowBodyScanSuccess(false), 5000);
+        
         setIsEditing(true);
         setIsAnalyzing(false);
         triggerHaptic(hapticPatterns.success);
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Body analysis failed", error);
+      console.error("Body analysis or upload failed", error);
       setIsAnalyzing(false);
       triggerHaptic(hapticPatterns.error);
     }
@@ -286,8 +311,10 @@ const SettingsScreen: React.FC = () => {
     
     try {
       const url = await uploadAIAvatar(file);
+      // Update local form data
       setFormData(prev => ({ ...prev, aiAvatarURL: url }));
-      await refreshProfile();
+      // Update global context for instant reactivity in other screens
+      await updateProfile({ aiAvatarURL: url });
       setIsUploadingAIAvatar(false);
       triggerHaptic(hapticPatterns.success);
     } catch (error) {
@@ -466,12 +493,12 @@ const SettingsScreen: React.FC = () => {
         <div className="flex items-center gap-4 relative z-10">
           <div className="flex items-baseline gap-2">
             <motion.span 
-              key={bmi}
+              key={formData.bmi}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-7xl font-black text-gray-900 tracking-tighter"
             >
-              {bmi}
+              {formData.bmi}
             </motion.span>
             <span className="text-gray-400 font-bold text-sm tracking-tight">BMI</span>
           </div>
@@ -488,7 +515,7 @@ const SettingsScreen: React.FC = () => {
             
             <motion.div 
               initial={{ width: 0 }}
-              animate={{ width: `${Math.min((bmi / 40) * 100, 100) || 0}%` }}
+              animate={{ width: `${Math.min((formData.bmi / 40) * 100, 100) || 0}%` }}
               className={cn(
                 "h-full rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,0,0,0.1)]",
                 bmiDetails.barColor
@@ -532,8 +559,22 @@ const SettingsScreen: React.FC = () => {
         <button 
           onClick={() => bodyInputRef.current?.click()}
           disabled={isAnalyzing}
-          className="w-full py-5 glass hover:bg-white/60 rounded-[24px] text-sm font-bold transition-all flex items-center justify-center gap-3 border border-white/50 ios-shadow group"
+          className="w-full py-5 glass hover:bg-white/60 rounded-[24px] text-sm font-bold transition-all flex items-center justify-center gap-3 border border-white/50 ios-shadow group relative overflow-hidden"
         >
+          <AnimatePresence>
+            {showBodyScanSuccess && (
+              <motion.div 
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -50, opacity: 0 }}
+                className="absolute inset-0 bg-green-500 flex items-center justify-center gap-2 z-20"
+              >
+                <Sparkles size={20} className="text-white animate-pulse" />
+                <span className="text-white font-black uppercase tracking-widest text-xs">Scan Successful! Data Updated</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {isAnalyzing ? (
             <Loader2 size={20} className="animate-spin text-green-600" />
           ) : (
@@ -574,19 +615,38 @@ const SettingsScreen: React.FC = () => {
 
         <div className="grid grid-cols-3 gap-4 relative z-10">
           {[
-            { label: 'Protein', value: formData.proteinGoal, pct: formData.proteinPct, color: 'text-blue-500', bg: 'bg-blue-50/50', icon: Beef },
-            { label: 'Carbs', value: formData.carbsGoal, pct: formData.carbsPct, color: 'text-orange-500', bg: 'bg-orange-50/50', icon: Wheat },
-            { label: 'Fats', value: formData.fatsGoal, pct: formData.fatsPct, color: 'text-purple-500', bg: 'bg-purple-50/50', icon: Droplets }
-          ].map((macro) => (
-            <div key={macro.label} className={cn("p-4 rounded-2xl border border-white/50 ios-shadow text-center space-y-1", macro.bg)}>
-              <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto mb-2", macro.color, "bg-white/50")}>
-                <macro.icon size={16} />
+            { label: 'Protein', value: formData.proteinGoal, pct: formData.proteinPct, color: 'text-blue-500', bg: 'bg-blue-50/50', icon: Beef, current: dailySummary?.totalProtein || 0 },
+            { label: 'Carbs', value: formData.carbsGoal, pct: formData.carbsPct, color: 'text-orange-500', bg: 'bg-orange-50/50', icon: Wheat, current: dailySummary?.totalCarbs || 0 },
+            { label: 'Fats', value: formData.fatsGoal, pct: formData.fatsPct, color: 'text-purple-500', bg: 'bg-purple-50/50', icon: Droplets, current: dailySummary?.totalFats || 0 }
+          ].map((macro) => {
+            const progress = Math.min((macro.current / macro.value) * 100, 100) || 0;
+            return (
+              <div key={macro.label} className={cn("p-4 rounded-2xl border border-white/50 ios-shadow text-center space-y-3", macro.bg)}>
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mx-auto", macro.color, "bg-white/50")}>
+                  <macro.icon size={16} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{macro.label}</p>
+                  <p className="text-lg font-black text-gray-900 leading-none">{macro.value}g</p>
+                  <p className={cn("text-[10px] font-bold", macro.color)}>{macro.pct}%</p>
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="h-1.5 bg-white/50 rounded-full overflow-hidden border border-white/20">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      className={cn("h-full rounded-full", macro.color.replace('text', 'bg'))}
+                    />
+                  </div>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">
+                    {macro.current}g / {macro.value}g
+                  </p>
+                </div>
               </div>
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{macro.label}</p>
-              <p className="text-lg font-black text-gray-900 leading-none">{macro.value}g</p>
-              <p className={cn("text-[10px] font-bold", macro.color)}>{macro.pct}%</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

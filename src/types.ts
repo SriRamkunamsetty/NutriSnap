@@ -19,6 +19,7 @@ export interface UserProfile {
   bmi?: number;
   bodyType?: BodyType;
   fatEstimate?: number;
+  bodyScanURL?: string;
   goal?: Goal;
   calorieLimit?: number;
   proteinGoal?: number;

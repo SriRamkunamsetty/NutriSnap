@@ -456,31 +456,31 @@ const AnalyticsScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Health Insights */}
-        <div className="glass-card p-10 rounded-[48px] ios-shadow space-y-8 relative overflow-hidden bg-gray-900 text-white">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none">
+      {/* Health Insights */}
+        <div className="glass-card p-10 rounded-[48px] ios-shadow space-y-8 relative overflow-hidden bg-slate-900 text-white border border-slate-800">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.1] pointer-events-none">
             <Sparkles size={120} className="text-green-400" />
           </div>
 
           <div className="flex items-center gap-3 relative z-10">
-            <div className="w-8 h-8 bg-green-500/20 rounded-xl flex items-center justify-center text-green-400">
-              <Sparkles size={18} strokeWidth={2.5} />
+            <div className="w-10 h-10 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-400 border border-green-500/20">
+              <Sparkles size={20} strokeWidth={2.5} />
             </div>
-            <h3 className="text-xl font-bold tracking-tight">AI Health Insights</h3>
+            <h3 className="text-2xl font-black tracking-tight">AI Health Insights</h3>
           </div>
           
           <div className="space-y-6 relative z-10">
-            <div className="flex gap-5">
-              <div className="w-1.5 h-auto bg-green-500 rounded-full opacity-50" />
-              <p className="text-sm text-gray-300 leading-relaxed font-medium">
+            <div className="flex gap-5 group">
+              <div className="w-1.5 h-auto bg-green-500 rounded-full opacity-40 group-hover:opacity-100 transition-opacity" />
+              <p className="text-base text-slate-200 leading-relaxed font-semibold">
                 {calorieProgress > 0.8 
                   ? "You're approaching your calorie limit. Opt for high-volume, low-calorie snacks like cucumber or berries."
                   : "Excellent pace! You're perfectly aligned with your daily calorie targets."}
               </p>
             </div>
-            <div className="flex gap-5">
-              <div className="w-1.5 h-auto bg-blue-500 rounded-full opacity-50" />
-              <p className="text-sm text-gray-300 leading-relaxed font-medium">
+            <div className="flex gap-5 group">
+              <div className="w-1.5 h-auto bg-blue-500 rounded-full opacity-40 group-hover:opacity-100 transition-opacity" />
+              <p className="text-base text-slate-200 leading-relaxed font-semibold">
                 {dailySummary && dailySummary.totalProtein < 50 
                   ? "Protein intake is slightly behind. Consider a Greek yogurt or protein shake to recover."
                   : "Protein levels are optimal. This is great for muscle maintenance and satiety."}
@@ -488,9 +488,9 @@ const AnalyticsScreen: React.FC = () => {
             </div>
           </div>
 
-          <button className="w-full py-5 bg-white/10 hover:bg-white/20 rounded-[24px] text-sm font-bold transition-all flex items-center justify-center gap-3 border border-white/10 relative z-10">
+          <button className="w-full py-5 bg-white/5 hover:bg-white/10 rounded-[24px] text-sm font-black transition-all flex items-center justify-center gap-3 border border-white/10 relative z-10 uppercase tracking-widest">
             View Detailed Report 
-            <ChevronRight size={18} strokeWidth={2.5} />
+            <ChevronRight size={18} strokeWidth={3} />
           </button>
         </div>
       </div>
