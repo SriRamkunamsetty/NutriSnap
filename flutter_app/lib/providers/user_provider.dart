@@ -59,6 +59,23 @@ class UserProvider with ChangeNotifier {
     });
   }
 
+  Future<void> addWater(int amount) async {
+    if (_profile == null) return;
+    await _firebaseService.updateWaterIntake(_profile!.uid, amount);
+  }
+
+  Future<void> sendMessage(String text) async {
+    if (_profile == null) return;
+    final message = ChatMessage(
+      id: '',
+      userId: _profile!.uid,
+      role: 'user',
+      text: text,
+      timestamp: DateTime.now(),
+    );
+    await _firebaseService.addChatMessage(message);
+  }
+
   @override
   void dispose() {
     _profileSub?.cancel();

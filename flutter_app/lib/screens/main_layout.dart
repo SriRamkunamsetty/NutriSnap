@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'home_screen.dart';
-import 'analytics_screen.dart';
 import 'history_screen.dart';
-import 'settings_screen.dart';
+import 'analytics_screen.dart';
 import 'chat_screen.dart';
+import 'settings_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -14,91 +16,119 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  int _selectedIndex = 0;
-
+  int _currentIndex = 0;
   final List<Widget> _screens = [
     const HomeScreen(),
-    const AnalyticsScreen(),
     const HistoryScreen(),
+    const AnalyticsScreen(),
+    const ChatScreen(),
     const SettingsScreen(),
   ];
+
+  final List<IconData> _icons = [
+    LucideIcons.home,
+    LucideIcons.history,
+    LucideIcons.barChart2,
+    LucideIcons.messageSquare,
+    LucideIcons.settings,
+  ];
+
+  final List<String> _labels = ['Home', 'History', 'Stats', 'AI', 'Settings'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, LucideIcons.home, 'Home'),
-                _buildNavItem(1, LucideIcons.pieChart, 'Stats'),
-                _buildNavItem(2, LucideIcons.history, 'History'),
-                _buildNavItem(3, LucideIcons.settings, 'Settings'),
-              ],
-            ),
+      backgroundColor: const Color(0xFFF7F8FA),
+      body: Stack(
+        children: [
+          // Main Content
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ChatScreen()),
-          );
-        },
-        backgroundColor: const Color(0xFF10B981),
-        child: const Icon(LucideIcons.sparkles, color: Colors.white),
-      ),
-    );
-  }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF10B981).withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? const Color(0xFF10B981) : Colors.grey,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? const Color(0xFF10B981) : Colors.grey,
+          // Floating Pill Navigation
+          Positioned(
+            bottom: 32,
+            left: 32,
+            right: 32,
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 320),
+                height: 64,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: Colors.white.withOpacity(0.5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Stack(
+                    children: [
+                      // Liquid Pill Indicator
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.elasticOut,
+                        alignment: Alignment(
+                          -1.0 + (_currentIndex * (2.0 / (_icons.length - 1))),
+                          0,
+                        ),
+                        child: FractionallySizedBox(
+                          widthFactor: 1 / _icons.length,
+                          child: Container(
+                            margin: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // Nav Items
+                      Row(
+                        children: List.generate(_icons.length, (index) {
+                          final isSelected = _currentIndex == index;
+                          return Expanded(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _currentIndex = index),
+                              behavior: HitTestBehavior.opaque,
+                              child: Center(
+                                child: Icon(
+                                  _icons[index],
+                                  color: isSelected
+                                      ? const Color(0xFF10B981)
+                                      : Colors.grey.withOpacity(0.5),
+                                  size: 20,
+                                  strokeWidth: isSelected ? 2.5 : 2.0,
+                                ).animate(target: isSelected ? 1 : 0).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.1, 1.1)),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

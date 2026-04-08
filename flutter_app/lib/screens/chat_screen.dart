@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
-import '../models/chat_message.dart';
-import '../services/firebase_service.dart';
-import '../services/gemini_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -17,7 +15,6 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isTyping = false;
 
   @override
   Widget build(BuildContext context) {
@@ -25,193 +22,216 @@ class _ChatScreenState extends State<ChatScreen> {
     final messages = userProvider.messages;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
+      backgroundColor: const Color(0xFFF7F8FA),
+      body: SafeArea(
+        child: Column(
           children: [
-            const CircleAvatar(
-              radius: 16,
-              backgroundColor: Color(0xFF10B981),
-              child: Icon(LucideIcons.sparkles, size: 16, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AI Nutrition Coach',
-                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'Always Online',
-                  style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.all(20),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final msg = messages[index];
-                final isUser = msg.role == 'user';
-                return _buildMessageBubble(msg.text, isUser);
-              },
-            ),
-          ),
-          if (_isTyping)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
-                  Text('AI is thinking...', style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Health Coach',
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF0F172A),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                            ),
+                          ).animate(onPlay: (c) => c.repeat()).scale(duration: 1.seconds, begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2)).fadeIn(),
+                          const SizedBox(width: 6),
+                          Text(
+                            'ALWAYS ONLINE',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFF10B981),
+                              letterSpacing: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-          _buildInputArea(),
-        ],
+
+            // Messages
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final message = messages[index];
+                  final isUser = message.role == 'user';
+                  return _buildMessageBubble(message.content, isUser);
+                },
+              ),
+            ),
+
+            // Input
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TextField(
+                          controller: _controller,
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                          decoration: InputDecoration(
+                            hintText: 'Ask about your nutrition...',
+                            hintStyle: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w500),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        if (_controller.text.trim().isNotEmpty) {
+                          userProvider.sendMessage(_controller.text.trim());
+                          _controller.clear();
+                          // Scroll to bottom
+                          Future.delayed(const Duration(milliseconds: 100), () {
+                            _scrollController.animateTo(
+                              _scrollController.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeOut,
+                            );
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(LucideIcons.send, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 80), // Space for bottom nav
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildMessageBubble(String text, bool isUser) {
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF10B981) : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: Radius.circular(isUser ? 20 : 0),
-            bottomRight: Radius.circular(isUser ? 0 : 20),
-          ),
-          boxShadow: [
-            if (!isUser)
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
+              child: const Icon(LucideIcons.sparkles, color: Color(0xFF10B981), size: 16),
+            ),
+            const SizedBox(width: 8),
           ],
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isUser ? Colors.white : Colors.black87,
-            fontSize: 14,
-            height: 1.4,
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isUser ? const Color(0xFF0F172A) : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(24),
+                  topRight: const Radius.circular(24),
+                  bottomLeft: Radius.circular(isUser ? 24 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Text(
+                text,
+                style: GoogleFonts.inter(
+                  color: isUser ? Colors.white : const Color(0xFF0F172A),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
+          if (isUser) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.user, color: Colors.grey, size: 16),
+            ),
+          ],
         ],
       ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  hintText: 'Ask anything...',
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: _sendMessage,
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF10B981),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(LucideIcons.send, color: Colors.white, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _sendMessage() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
-
-    _controller.clear();
-    final userProvider = context.read<UserProvider>();
-    final firebaseService = FirebaseService();
-    
-    final userMsg = ChatMessage(
-      userId: userProvider.profile!.uid,
-      role: 'user',
-      text: text,
-      timestamp: DateTime.now(),
-    );
-
-    await firebaseService.addMessage(userMsg);
-    
-    setState(() => _isTyping = true);
-
-    try {
-      // In a real app, you'd get the API key from a secure place
-      final geminiService = GeminiService(apiKey: 'YOUR_GEMINI_API_KEY');
-      
-      final history = userProvider.messages.reversed.map((m) => {'role': m.role, 'text': m.text}).toList();
-      
-      final aiResponse = await geminiService.getAICoachResponse(
-        message: text,
-        profile: userProvider.profile!,
-        dailySummary: userProvider.dailySummary,
-        recentScans: userProvider.scans,
-        history: history,
-      );
-
-      final aiMsg = ChatMessage(
-        userId: userProvider.profile!.uid,
-        role: 'model',
-        text: aiResponse,
-        timestamp: DateTime.now(),
-      );
-
-      await firebaseService.addMessage(aiMsg);
-    } catch (e) {
-      print('Error sending message: $e');
-    } finally {
-      if (mounted) setState(() => _isTyping = false);
-    }
+    ).animate().fadeIn(duration: 400.ms).moveY(begin: 10, end: 0);
   }
 }
