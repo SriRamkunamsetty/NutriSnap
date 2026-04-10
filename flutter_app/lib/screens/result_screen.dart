@@ -78,7 +78,7 @@ class ResultScreen extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(120)),
                     child: Image.network(
-                      result.imageUrl,
+                      result.imageUrl ?? 'https://picsum.photos/seed/food/600/600',
                       fit: BoxFit.cover,
                     ),
                   ),

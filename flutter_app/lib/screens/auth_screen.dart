@@ -365,7 +365,6 @@ class _AuthScreenState extends State<AuthScreen> {
                                     'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
                                     width: 18,
                                     height: 18,
-                                    referrerPolicy: ReferrerPolicy.noReferrer,
                                   ),
                                 ),
                                 const SizedBox(width: 16),

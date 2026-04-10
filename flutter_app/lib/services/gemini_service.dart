@@ -83,7 +83,7 @@ User Profile:
 - Name: ${userProfile.displayName}
 - Height: ${userProfile.height} cm
 - Weight: ${userProfile.weight} kg
-- BMI: ${userProfile.bmi.toStringAsFixed(1)}
+- BMI: ${userProfile.bmi?.toStringAsFixed(1) ?? 'N/A'}
 - Goal: ${userProfile.goal}
 - Daily Calorie Limit: ${userProfile.calorieLimit} kcal
 - Protein Goal: ${userProfile.proteinGoal}g

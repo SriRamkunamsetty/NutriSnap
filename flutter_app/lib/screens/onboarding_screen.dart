@@ -356,7 +356,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         const SizedBox(height: 16),
         _buildGoalOption('maintain', 'Maintain', 'Stay healthy and balanced', LucideIcons.target, Colors.green),
         const SizedBox(height: 16),
-        _buildGoalOption('gain', 'Build Muscle', 'Gain strength and mass', LucideIcons.weight, Colors.blue),
+        _buildGoalOption('gain', 'Build Muscle', 'Gain strength and mass', LucideIcons.dumbbell, Colors.blue),
       ],
     ).animate().fadeIn(duration: 500.ms).moveX(begin: 20, end: 0);
   }

@@ -180,7 +180,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   image: DecorationImage(
-                    image: NetworkImage(scan.imageUrl),
+                    image: NetworkImage(scan.imageUrl ?? 'https://picsum.photos/seed/food/200/200'),
                     fit: BoxFit.cover,
                   ),
                 ),

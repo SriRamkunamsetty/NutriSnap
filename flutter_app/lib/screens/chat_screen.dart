@@ -96,7 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 itemBuilder: (context, index) {
                   final message = messages[index];
                   final isUser = message.role == 'user';
-                  return _buildMessageBubble(message.content, isUser);
+                  return _buildMessageBubble(message.text, isUser);
                 },
               ),
             ),

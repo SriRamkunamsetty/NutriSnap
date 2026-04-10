@@ -12,6 +12,7 @@ class ScanResult {
   final String? imageUrl;
   final DateTime timestamp;
   final String? type;
+  final String? details;
   final String? description;
 
   ScanResult({
@@ -26,6 +27,7 @@ class ScanResult {
     this.imageUrl,
     required this.timestamp,
     this.type,
+    this.details,
     this.description,
   });
 
@@ -42,6 +44,7 @@ class ScanResult {
       imageUrl: map['imageUrl'],
       timestamp: (map['timestamp'] as Timestamp).toDate(),
       type: map['type'],
+      details: map['details'],
       description: map['description'],
     );
   }
@@ -58,6 +61,7 @@ class ScanResult {
       'imageUrl': imageUrl,
       'timestamp': Timestamp.fromDate(timestamp),
       'type': type,
+      'details': details,
       'description': description,
     };
   }

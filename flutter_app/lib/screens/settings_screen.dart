@@ -253,7 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStat('BMI', profile?.bmi.toStringAsFixed(1) ?? '--'),
+                        _buildStat('BMI', profile?.bmi?.toStringAsFixed(1) ?? '--'),
                         _buildStat('Body Type', profile?.bodyType ?? '--'),
                         _buildStat('Fat %', profile?.fatEstimate != null ? '${profile!.fatEstimate}%' : '--'),
                       ],

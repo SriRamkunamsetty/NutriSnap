@@ -115,7 +115,6 @@ class _MainLayoutState extends State<MainLayout> {
                                       ? const Color(0xFF10B981)
                                       : Colors.grey.withOpacity(0.5),
                                   size: 20,
-                                  strokeWidth: isSelected ? 2.5 : 2.0,
                                 ).animate(target: isSelected ? 1 : 0).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.1, 1.1)),
                               ),
                             ),

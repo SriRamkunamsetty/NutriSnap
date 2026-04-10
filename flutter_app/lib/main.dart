@@ -237,7 +237,7 @@ class _AppContentState extends State<AppContent> {
               ),
             ),
           Expanded(
-            child: userProvider.profile == null || userProvider.profile!.displayName.isEmpty
+            child: userProvider.profile == null || (userProvider.profile!.displayName?.isEmpty ?? true)
                 ? const OnboardingScreen()
                 : const MainLayout(),
           ),

@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             const TextSpan(text: 'Hi, '),
                             TextSpan(
-                              text: profile?.displayName.split(' ')[0] ?? 'User',
+                              text: profile?.displayName?.split(' ')[0] ?? 'User',
                               style: const TextStyle(color: Color(0xFF10B981)),
                             ),
                           ],

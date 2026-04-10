@@ -81,4 +81,44 @@ class UserProfile {
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
+
+  UserProfile copyWith({
+    String? uid,
+    String? email,
+    String? displayName,
+    String? photoURL,
+    double? height,
+    double? weight,
+    double? bmi,
+    String? bodyType,
+    double? fatEstimate,
+    String? goal,
+    int? calorieLimit,
+    int? waterGoal,
+    int? proteinGoal,
+    int? carbsGoal,
+    int? fatsGoal,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserProfile(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      photoURL: photoURL ?? this.photoURL,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
+      bmi: bmi ?? this.bmi,
+      bodyType: bodyType ?? this.bodyType,
+      fatEstimate: fatEstimate ?? this.fatEstimate,
+      goal: goal ?? this.goal,
+      calorieLimit: calorieLimit ?? this.calorieLimit,
+      waterGoal: waterGoal ?? this.waterGoal,
+      proteinGoal: proteinGoal ?? this.proteinGoal,
+      carbsGoal: carbsGoal ?? this.carbsGoal,
+      fatsGoal: fatsGoal ?? this.fatsGoal,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
