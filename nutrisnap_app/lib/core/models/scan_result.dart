@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../utils/datetime_utils.dart';
 
 class ScanResult extends Equatable {
   final String id;
@@ -48,7 +49,7 @@ class ScanResult extends Equatable {
       fatEstimate: (map['fatEstimate'] as num?)?.toDouble(),
       confidence: (map['confidence'] as num?)?.toDouble() ?? 0.0,
       imageUrl: map['imageUrl'],
-      timestamp: map['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+      timestamp: DateTimeUtils.parse(map['timestamp'])?.toIso8601String() ?? DateTime.now().toIso8601String(),
     );
   }
 

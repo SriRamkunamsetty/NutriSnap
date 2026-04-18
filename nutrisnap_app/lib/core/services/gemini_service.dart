@@ -236,13 +236,18 @@ Your Task:
 4. Provide up to 3 short, context-aware follow-up suggestions in the array.
 ''';
 
+    // Use a fresh model instance for the coach to inject the dynamic system context correctly
+    final specializedCoachModel = GenerativeModel(
+      model: 'gemini-3.1-flash-preview',
+      apiKey: apiKey,
+      systemInstruction: Content.system(systemInstruction),
+    );
+
     final contents = historyMessages.map(
       (m) => Content(m.role, [TextPart(m.text)])
     ).toList();
     
-    // Pass systemInstruction to the config payload
     final config = GenerationConfig(
-      systemInstruction: Content.system(systemInstruction),
       responseMimeType: 'application/json',
       responseSchema: Schema.object(
         properties: {
@@ -255,7 +260,7 @@ Your Task:
 
     try {
       final response = await _generateWithResilience(
-        _coachModel,
+        specializedCoachModel,
         contents,
         config,
       );

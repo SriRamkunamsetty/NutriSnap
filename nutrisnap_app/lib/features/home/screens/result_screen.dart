@@ -18,13 +18,66 @@ import '../../auth/providers/user_provider.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   final String id;
-  const ResultScreen({super.key, required this.id});
+  final ScanResult? initialScan;
+  const ResultScreen({super.key, required this.id, this.initialScan});
 
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
+  ScanResult? _fetchedScan;
+  bool _isFetching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchedScan = widget.initialScan;
+    _checkAndFetchScan();
+  }
+
+  Future<void> _checkAndFetchScan() async {
+    // If we have initial scan or it's in history, we don't need to fetch
+    final scans = ref.read(scanHistoryStreamProvider).valueOrNull ?? [];
+    if (_fetchedScan != null || scans.any((s) => s.id == widget.id)) return;
+
+    setState(() => _isFetching = true);
+    final scan = await ref.read(storageServiceProvider).getScanResult(widget.id);
+    if (mounted) {
+      setState(() {
+        _fetchedScan = scan;
+        _isFetching = false;
+      });
+    }
+  }
+
+  Future<void> _handleDelete(ScanResult scan) async {
+    HapticFeedback.mediumImpact();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Scan?'),
+        content: const Text('This action cannot be undone and will remove the nutritional data from your daily summary.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await ref.read(storageServiceProvider).deleteScanResult(scan.id, scan);
+      if (mounted) {
+        context.go(AppRoutes.home);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scan deleted')));
+      }
+    }
+  }
+
   Future<void> _handleShare(ScanResult scan) async {
     HapticFeedback.lightImpact();
     
@@ -112,16 +165,29 @@ Track your journey with NutriSnap!
       backgroundColor: AppColors.background,
       body: asyncScans.when(
         data: (scans) {
-          final scan = scans.where((s) => s.id == widget.id).firstOrNull;
+          final scan = scans.where((s) => s.id == widget.id).firstOrNull ?? _fetchedScan;
           
           if (scan == null) {
+            if (_isFetching) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            }
             return _buildNotFound();
           }
           
           return _buildContent(scan, userState.profile, dailySummarySync);
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, st) => Center(child: Text('Error loading scan: $e')),
+        loading: () {
+          if (_fetchedScan != null) {
+            return _buildContent(_fetchedScan!, userState.profile, dailySummarySync);
+          }
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+        },
+        error: (e, st) {
+          if (_fetchedScan != null) {
+             return _buildContent(_fetchedScan!, userState.profile, dailySummarySync);
+          }
+          return Center(child: Text('Error loading scan: $e'));
+        },
       ),
     );
   }
@@ -199,9 +265,18 @@ Track your journey with NutriSnap!
                       ),
                       Positioned(
                         top: 16, right: 16,
-                        child: InkWell(
-                          onTap: () => _handleShare(scan),
-                          child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.3))), child: const Icon(LucideIcons.share2, color: Colors.white, size: 20)),
+                        child: Row(
+                          children: [
+                            InkWell(
+                              onTap: () => _handleShare(scan),
+                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.3))), child: const Icon(LucideIcons.share2, color: Colors.white, size: 20)),
+                            ),
+                            const SizedBox(width: 12),
+                            InkWell(
+                              onTap: () => _handleDelete(scan),
+                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.red.withOpacity(0.4), shape: BoxShape.circle, border: Border.all(color: Colors.red.withOpacity(0.3))), child: const Icon(LucideIcons.trash2, color: Colors.white, size: 20)),
+                            ),
+                          ],
                         )
                       ),
                       Positioned(

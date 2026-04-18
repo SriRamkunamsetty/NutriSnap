@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/unsaved_changes_provider.dart';
+import '../../../core/providers/connectivity_provider.dart';
 
 class MainLayout extends ConsumerWidget {
   final Widget child;
@@ -92,9 +93,83 @@ class MainLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = ref.watch(isOnlineProvider).valueOrNull ?? true;
+    final userState = ref.watch(userNotifierProvider);
+    final authUser = userState.authUser;
+    final isUnverified = authUser != null && !authUser.emailVerified && authUser.providerData.any((p) => p.providerId == 'password');
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: child,
+      body: Column(
+        children: [
+          if (!isOnline)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              color: Colors.red.shade600,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(LucideIcons.wifiOff, color: Colors.white, size: 14),
+                  SizedBox(width: 8),
+                  Text(
+                    'Offline Mode: Data will sync when reconnected',
+                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          if (isUnverified)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              color: Colors.amber.shade50,
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.amber.shade200)),
+              ),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.alertCircle, color: Colors.amber.shade800, size: 16),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Please verify your email address to secure your account.',
+                      style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                       try {
+                         await ref.read(userNotifierProvider.notifier).sendEmailVerification();
+                         if (context.mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(content: Text('Verification email sent! Please check your inbox.')),
+                           );
+                         }
+                       } catch (e) {
+                         if (context.mounted) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(content: Text('Error: $e')),
+                           );
+                         }
+                       }
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Resend',
+                      style: TextStyle(color: Colors.amber.shade900, fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

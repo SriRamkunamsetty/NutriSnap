@@ -206,12 +206,65 @@ class StorageService {
   Future<void> updateScanResult(ScanResult updatedScan) async {
     _requireAuth();
     try {
-      final scanData = updatedScan.toMap();
+      // 1. Fetch old scan to calculate nutritional diff
+      final oldSnap = await _db.collection('users').doc(_currentUid).collection('scans').doc(updatedScan.id).get();
+      if (!oldSnap.exists) return;
       
-      // Calculate diff for daily summary (optional/complex depending on design, but we just update the record for now to keep it simple)
+      final oldScan = ScanResult.fromMap({...oldSnap.data()!, 'id': oldSnap.id});
+      
+      // 2. Calculate Diffs
+      final diffCal = updatedScan.calories - oldScan.calories;
+      final diffPro = updatedScan.protein - oldScan.protein;
+      final diffCarb = updatedScan.carbs - oldScan.carbs;
+      final diffFat = updatedScan.fats - oldScan.fats;
+
+      // 3. Update Scan Record
+      final scanData = updatedScan.toMap();
       await _withRetry(() => _db.collection('users').doc(_currentUid).collection('scans').doc(updatedScan.id).update(scanData));
+      
+      // 4. Update Daily Summary with Diffs
+      if (diffCal != 0 || diffPro != 0 || diffCarb != 0 || diffFat != 0) {
+        final date = DateTime.now().toIso8601String().split('T')[0]; // Note: This assumes update happens on SAME day. Valid for most cases.
+        await _withRetry(() => _db.collection('users').doc(_currentUid).collection('daily_summary').doc(date).set({
+          'totalCalories': FieldValue.increment(diffCal),
+          'totalProtein': FieldValue.increment(diffPro),
+          'totalCarbs': FieldValue.increment(diffCarb),
+          'totalFats': FieldValue.increment(diffFat),
+        }, SetOptions(merge: true)));
+      }
     } catch (e) {
       FirebaseExceptionHandler.handleException(e, 'updateScanResult');
+    }
+  }
+
+  Future<void> deleteScanResult(String id, ScanResult scan) async {
+    _requireAuth();
+    try {
+      // 1. Delete image if exists
+      if (scan.imageUrl != null && scan.imageUrl!.contains('firebasestorage')) {
+        try {
+          final ref = _storage.refFromURL(scan.imageUrl!);
+          await ref.delete();
+        } catch (e) {
+          debugPrint('Failed to delete image from storage: $e');
+        }
+      }
+
+      // 2. Delete scan document
+      await _withRetry(() => _db.collection('users').doc(_currentUid).collection('scans').doc(id).delete());
+
+      // 3. Update Daily Summary (decrement)
+      if (scan.type == 'food') {
+        final date = scan.timestamp.split('T')[0];
+        await _withRetry(() => _db.collection('users').doc(_currentUid).collection('daily_summary').doc(date).set({
+          'totalCalories': FieldValue.increment(-scan.calories),
+          'totalProtein': FieldValue.increment(-scan.protein),
+          'totalCarbs': FieldValue.increment(-scan.carbs),
+          'totalFats': FieldValue.increment(-scan.fats),
+        }, SetOptions(merge: true)));
+      }
+    } catch (e) {
+      FirebaseExceptionHandler.handleException(e, 'deleteScanResult');
     }
   }
 
@@ -225,6 +278,18 @@ class StorageService {
       .snapshots()
       .map((snapshot) => snapshot.docs.map((doc) => ScanResult.fromMap({...doc.data(), 'id': doc.id})).toList())
       .handleError((e) => FirebaseExceptionHandler.handleException(e, 'streamScanHistory'));
+  }
+
+  Future<ScanResult?> getScanResult(String id) async {
+    _requireAuth();
+    try {
+      final snap = await _withRetry(() => _db.collection('users').doc(_currentUid).collection('scans').doc(id).get());
+      if (snap.exists) return ScanResult.fromMap({...snap.data()!, 'id': snap.id});
+      return null;
+    } catch (e) {
+      FirebaseExceptionHandler.handleException(e, 'getScanResult');
+      return null;
+    }
   }
 
   // ==========================================

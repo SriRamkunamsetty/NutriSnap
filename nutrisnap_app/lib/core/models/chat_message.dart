@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../utils/datetime_utils.dart';
 
 class ChatMessage extends Equatable {
   final String id;
@@ -21,7 +22,7 @@ class ChatMessage extends Equatable {
       userId: map['userId'] ?? '',
       role: map['role'] ?? 'user',
       text: map['text'] ?? '',
-      timestamp: map['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+      timestamp: DateTimeUtils.parse(map['timestamp'])?.toIso8601String() ?? DateTime.now().toIso8601String(),
     );
   }
 

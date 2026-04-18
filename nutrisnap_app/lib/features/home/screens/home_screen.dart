@@ -88,7 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
          if (savedScan != null && mounted) {
            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scan saved successfully!')));
            // Navigate mapped to results
-           context.push('/result/${savedScan.id}');
+           context.push('\${AppRoutes.result}/\${savedScan.id}', extra: savedScan);
          }
       }
     } catch (e) {
@@ -140,7 +140,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final saved = await storage.saveScanResult(finalScan);
       if (saved != null && mounted) {
         if (!isSearchModal) Navigator.of(context).pop();
-        context.push('/result/${saved.id}');
+        context.push('\${AppRoutes.result}/\${saved.id}', extra: saved);
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);

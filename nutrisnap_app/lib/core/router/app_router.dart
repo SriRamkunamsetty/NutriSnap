@@ -4,27 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/providers/user_provider.dart';
 import '../../features/auth/screens/auth_screen.dart'; 
+import '../../features/auth/screens/splash_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/result_screen.dart';
 import '../../features/home/screens/analytics_screen.dart';
 import '../../features/home/screens/history_screen.dart';
 import '../../features/home/screens/main_layout.dart';
+import '../../features/chat/screens/ai_chat_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../constants/app_routes.dart';
-
-// ==========================================
-// PLACEHOLDERS (To be replaced with actual screens)
-// ==========================================
-
-class SplashScreen extends StatelessWidget { 
-  const SplashScreen({super.key}); 
-  @override Widget build(BuildContext context) => const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.green))); 
-}
-class AIChatScreen extends StatelessWidget { 
-  const AIChatScreen({super.key}); 
-  @override Widget build(BuildContext context) => const Scaffold(body: Center(child: Text('AI Chat Screen'))); 
-}
 
 // ==========================================
 // ROUTER CONFIGURATION
@@ -139,7 +128,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: '${AppRoutes.result}/:id',
             builder: (context, state) {
               final id = state.pathParameters['id'] ?? '';
-              return ResultScreen(id: id);
+              final scan = state.extra as ScanResult?;
+              return ResultScreen(id: id, initialScan: scan);
             },
           ),
         ],

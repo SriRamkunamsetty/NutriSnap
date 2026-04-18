@@ -114,9 +114,32 @@ class UserNotifier extends StateNotifier<UserState> {
     );
   }
 
-  // Explicit refresh exposed to UI (rarely needed since it's real-time, but maintained for API parity with TSX)
+  // Explicit refresh exposed to UI (real-time sync + manual fetch and auth reload)
   Future<UserProfile?> refreshProfile() async {
+    final user = _ref.read(firebaseServiceProvider).auth.currentUser;
+    if (user != null) {
+      await user.reload();
+      final freshUser = _ref.read(firebaseServiceProvider).auth.currentUser;
+      state = state.copyWith(authUser: freshUser);
+      
+      final db = _ref.read(firebaseServiceProvider).db;
+      final snap = await db.collection('users').doc(user.uid).get();
+      if (snap.exists) {
+        state = state.copyWith(profile: UserProfile.fromMap(snap.data()!));
+      }
+    }
     return state.profile;
+  }
+
+  Future<void> signOut() async {
+    await _ref.read(firebaseServiceProvider).auth.signOut();
+  }
+
+  Future<void> sendEmailVerification() async {
+    final user = _ref.read(firebaseServiceProvider).auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
   }
 
   Future<void> updateProfile(UserProfile updatedProfile) async {
