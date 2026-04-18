@@ -131,13 +131,26 @@ const AppContent: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
     setAuthError(null);
     const provider = new GithubAuthProvider();
+    // Add scopes that might be needed for some GitHub accounts
+    provider.addScope('read:user');
+    provider.addScope('user:email');
+    
     try {
       await signInWithPopup(auth, provider);
       triggerHaptic(hapticPatterns.success);
     } catch (error: any) {
       triggerHaptic(hapticPatterns.error);
-      setAuthError(getFriendlyErrorMessage(error.code));
-      console.error("GitHub login failed", error);
+      const friendlyMessage = getFriendlyErrorMessage(error.code);
+      setAuthError(friendlyMessage);
+      
+      // Detailed logging for the user to see in the console
+      console.group("GitHub Login Debug Info");
+      console.error("Error Code:", error.code);
+      console.error("Error Message:", error.message);
+      console.error("Full Error Object:", error);
+      console.info("Check if your App URL is allowlisted in Firebase Console > Authentication > Settings > Authorized domains");
+      console.info("Check if GitHub callback URL is set to: https://gen-lang-client-0654629425.firebaseapp.com/__/auth/handler");
+      console.groupEnd();
     }
   };
 

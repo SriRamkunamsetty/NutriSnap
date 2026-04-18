@@ -1,0 +1,116 @@
+{
+  "totalFiles": 18,
+  "convertedFiles": 0,
+  "remainingFiles": 18,
+  "completionPercentage": 0.0,
+  "files": [
+    {
+      "reactFile": "src/types.ts",
+      "flutterFile": "lib/types.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/firebase.ts",
+      "flutterFile": "lib/firebase.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/lib/haptics.ts",
+      "flutterFile": "lib/core/haptics.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/lib/notifications.ts",
+      "flutterFile": "lib/core/notifications.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/services/storageService.ts",
+      "flutterFile": "lib/services/storage_service.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/services/geminiService.ts",
+      "flutterFile": "lib/services/gemini_service.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/services/pdfService.ts",
+      "flutterFile": "lib/services/pdf_service.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/contexts/UserContext.tsx",
+      "flutterFile": "lib/providers/user_provider.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/App.tsx",
+      "flutterFile": "lib/app.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/main.tsx",
+      "flutterFile": "lib/main.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/components/Layout.tsx",
+      "flutterFile": "lib/components/layout.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/OnboardingScreen.tsx",
+      "flutterFile": "lib/screens/onboarding_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/HomeScreen.tsx",
+      "flutterFile": "lib/screens/home_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/HistoryScreen.tsx",
+      "flutterFile": "lib/screens/history_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/AnalyticsScreen.tsx",
+      "flutterFile": "lib/screens/analytics_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/AIChatScreen.tsx",
+      "flutterFile": "lib/screens/ai_chat_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/ResultScreen.tsx",
+      "flutterFile": "lib/screens/result_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    },
+    {
+      "reactFile": "src/screens/SettingsScreen.tsx",
+      "flutterFile": "lib/screens/settings_screen.dart",
+      "status": "Not Started",
+      "notes": ""
+    }
+  ]
+}
