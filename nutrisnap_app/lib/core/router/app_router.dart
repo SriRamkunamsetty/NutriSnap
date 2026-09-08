@@ -14,6 +14,38 @@ import '../../features/home/screens/main_layout.dart';
 import '../../features/chat/screens/ai_chat_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../constants/app_routes.dart';
+import '../models/scan_result.dart';
+
+CustomTransitionPage<void> _buildNativePageTransition({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.04, 0.0),
+          end: Offset.zero,
+        ).animate(curvedAnimation),
+        child: FadeTransition(
+          opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curvedAnimation),
+          child: child,
+        ),
+      );
+    },
+  );
+}
 
 // ==========================================
 // ROUTER CONFIGURATION
@@ -106,30 +138,54 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => _buildNativePageTransition(
+              context: context,
+              state: state,
+              child: const HomeScreen(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.history,
-            builder: (context, state) => const HistoryScreen(),
+            pageBuilder: (context, state) => _buildNativePageTransition(
+              context: context,
+              state: state,
+              child: const HistoryScreen(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.analytics,
-            builder: (context, state) => const AnalyticsScreen(),
+            pageBuilder: (context, state) => _buildNativePageTransition(
+              context: context,
+              state: state,
+              child: const AnalyticsScreen(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.chat,
-            builder: (context, state) => const AIChatScreen(),
+            pageBuilder: (context, state) => _buildNativePageTransition(
+              context: context,
+              state: state,
+              child: const AIChatScreen(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.settings,
-            builder: (context, state) => const SettingsScreen(),
+            pageBuilder: (context, state) => _buildNativePageTransition(
+              context: context,
+              state: state,
+              child: const SettingsScreen(),
+            ),
           ),
           GoRoute(
             path: '${AppRoutes.result}/:id',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final id = state.pathParameters['id'] ?? '';
               final scan = state.extra as ScanResult?;
-              return ResultScreen(id: id, initialScan: scan);
+              return _buildNativePageTransition(
+                context: context,
+                state: state,
+                child: ResultScreen(id: id, initialScan: scan),
+              );
             },
           ),
         ],

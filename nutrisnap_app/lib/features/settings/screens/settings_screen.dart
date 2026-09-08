@@ -17,6 +17,7 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/ui_feedback.dart';
 import '../../../core/providers/unsaved_changes_provider.dart';
 import '../../auth/providers/user_provider.dart';
+import '../../home/widgets/meal_reminders_sheet.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -894,6 +895,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ],
                     )
                   ),
+                  const SizedBox(height: 32),
+
+                  // Recurring Meal Reminders Card
+                  const MealRemindersCard(),
                   const SizedBox(height: 32),
 
                   // Health Report Section

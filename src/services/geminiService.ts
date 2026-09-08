@@ -174,3 +174,96 @@ Return the response as JSON with 'text' (the advice) and 'suggestions' (array of
     return { text: response.text, suggestions: [] };
   }
 };
+
+export interface PersonalizedFoodRecommendation {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  category: 'meal' | 'snack' | 'high_protein' | 'low_carb';
+  reason: string;
+  matchScore: number;
+  emoji: string;
+  servingSize: string;
+  mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+}
+
+export const getPersonalizedHealthyRecommendations = async (params: {
+  remainingCalories: number;
+  calorieLimit: number;
+  proteinGoal: number;
+  carbsGoal: number;
+  fatsGoal: number;
+  consumedCalories: number;
+  consumedProtein: number;
+  consumedCarbs: number;
+  consumedFats: number;
+  goal?: string;
+}): Promise<PersonalizedFoodRecommendation[]> => {
+  const model = "gemini-3-flash-preview";
+
+  const remainingProtein = Math.max(0, params.proteinGoal - params.consumedProtein);
+  const remainingCarbs = Math.max(0, params.carbsGoal - params.consumedCarbs);
+  const remainingFats = Math.max(0, params.fatsGoal - params.consumedFats);
+
+  const prompt = `Generate 6 personalized, delicious, real-world healthy food and meal recommendations for a user based on their specific nutrition metrics:
+- Remaining Calorie Budget: ${params.remainingCalories > 0 ? `${params.remainingCalories} kcal left` : `Exceeded by ${Math.abs(params.remainingCalories)} kcal - prioritize very low-calorie nutrient-dense snacks under 150 kcal`}
+- Daily Calorie Target: ${params.calorieLimit} kcal
+- User Fitness Goal: ${params.goal || 'maintain'}
+- Macro Target Goals: Protein ${params.proteinGoal}g, Carbs ${params.carbsGoal}g, Fats ${params.fatsGoal}g
+- Remaining Macro Deficit Needed Today: Protein ~${remainingProtein}g, Carbs ~${remainingCarbs}g, Fats ~${remainingFats}g
+
+Requirements:
+1. Every recommendation MUST strictly respect the remaining calorie target and macro needs.
+2. If remaining calories are low (< 300 kcal), recommend low-calorie satisfying snacks or light meals.
+3. If remaining protein is high, recommend high-protein items.
+4. Include a clear 'reason' explaining why this fits their remaining targets today (e.g., "Provides 28g lean protein with only 210 kcal to help close your protein gap").
+5. Provide realistic portion sizes and accurate macro counts.
+6. Provide an appropriate food emoji.
+7. Categorize each item into 'meal', 'snack', 'high_protein', or 'low_carb'.
+8. Assign a matchScore between 80 and 99.
+
+Return a JSON array of objects.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              name: { type: Type.STRING },
+              calories: { type: Type.NUMBER },
+              protein: { type: Type.NUMBER },
+              carbs: { type: Type.NUMBER },
+              fats: { type: Type.NUMBER },
+              category: { type: Type.STRING, enum: ["meal", "snack", "high_protein", "low_carb"] },
+              reason: { type: Type.STRING },
+              matchScore: { type: Type.NUMBER },
+              emoji: { type: Type.STRING },
+              servingSize: { type: Type.STRING },
+              mealType: { type: Type.STRING, enum: ["Breakfast", "Lunch", "Dinner", "Snack"] },
+            },
+            required: ["id", "name", "calories", "protein", "carbs", "fats", "category", "reason", "matchScore", "emoji", "servingSize", "mealType"],
+          },
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "[]");
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return [];
+  } catch (error) {
+    console.error("Failed to fetch AI healthy food recommendations:", error);
+    return [];
+  }
+};

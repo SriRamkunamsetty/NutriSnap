@@ -6,8 +6,11 @@ import { analyzeFoodImage } from '../services/geminiService';
 import { saveScanResult, updateWaterIntake, uploadScanImage } from '../services/storageService';
 import { ScanResult } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
-import { sendLocalNotification } from '../lib/notifications';
+import { sendLocalNotification, startMealReminderScheduler, stopMealReminderScheduler } from '../lib/notifications';
 import { useUser } from '../contexts/UserContext';
+import { CalorieProgressRing } from '../components/CalorieProgressRing';
+import { MealRemindersCard } from '../components/MealRemindersModal';
+import { HealthyFoodSuggestions } from '../components/HealthyFoodSuggestions';
 
 const FOOD_DATABASE: Record<string, Partial<ScanResult>> = {
   'pizza': { foodName: 'Pizza Slice', calories: 285, protein: 12, carbs: 36, fats: 10, type: 'food', confidence: 0.8 },
@@ -49,6 +52,23 @@ const HomeScreen: React.FC = () => {
       }
     }
   }, [dailySummary, profile]);
+
+  // Start background periodic check for meal reminders
+  useEffect(() => {
+    startMealReminderScheduler();
+    return () => {
+      stopMealReminderScheduler();
+    };
+  }, []);
+
+  const handleQuickLogFood = async (food: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>) => {
+    if (!user) return;
+    try {
+      await saveScanResult(food);
+    } catch (e) {
+      console.error('Failed to quick log food', e);
+    }
+  };
 
   const handleImageCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -206,64 +226,15 @@ const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Daily Progress Card - Glassmorphic */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass-card p-8 rounded-[40px] relative overflow-hidden ios-shadow"
-      >
-        <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none">
-          <Flame size={240} className="text-green-600" />
-        </div>
-        
-        <div className="relative z-10 space-y-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Daily Fuel</h2>
-            </div>
-            <span className="text-xs font-black text-green-600 bg-green-50/50 px-3 py-1 rounded-full border border-green-100">
-              {Math.round(calorieProgress * 100)}%
-            </span>
-          </div>
+      {/* Daily Progress Ring & Macro Overview */}
+      <CalorieProgressRing
+        dailySummary={dailySummary}
+        profile={profile}
+        calorieProgress={calorieProgress}
+      />
 
-          <div className="flex items-baseline gap-2">
-            <span className="text-6xl font-black text-gray-900 tracking-tighter">
-              {dailySummary?.totalCalories || 0}
-            </span>
-            <span className="text-gray-400 font-bold text-sm tracking-tight">
-              / {profile?.calorieLimit || 2000} kcal
-            </span>
-          </div>
-
-          <div className="h-3 bg-gray-100/50 rounded-full overflow-hidden border border-white/20">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(calorieProgress * 100, 100)}%` }}
-              className={cn(
-                "h-full rounded-full transition-all duration-1000",
-                calorieProgress > 1 ? "bg-red-500" : "bg-green-500"
-              )}
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-6 pt-2">
-            {[
-              { label: 'Protein', value: dailySummary?.totalProtein || 0, color: 'bg-blue-500' },
-              { label: 'Carbs', value: dailySummary?.totalCarbs || 0, color: 'bg-orange-500' },
-              { label: 'Fats', value: dailySummary?.totalFats || 0, color: 'bg-purple-500' }
-            ].map((macro) => (
-              <div key={macro.label} className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <div className={cn("w-1.5 h-1.5 rounded-full", macro.color)} />
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{macro.label}</p>
-                </div>
-                <p className="text-lg font-bold text-gray-900">{macro.value}<span className="text-[10px] text-gray-400 ml-0.5">g</span></p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+      {/* Recurring Meal Reminders Card */}
+      <MealRemindersCard />
 
       {/* Water Tracker Section */}
       <motion.div 
@@ -465,6 +436,13 @@ const HomeScreen: React.FC = () => {
         </div>
         <ChevronRight className="text-gray-300 group-hover:text-green-500 transition-colors" />
       </button>
+
+      {/* Suggested Healthy Food Options Section */}
+      <HealthyFoodSuggestions
+        dailySummary={dailySummary}
+        profile={profile}
+        onQuickLog={handleQuickLogFood}
+      />
 
       {/* Last Scan Preview - Dynamic */}
       {scans.length > 0 && (

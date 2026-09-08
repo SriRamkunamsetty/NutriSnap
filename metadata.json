@@ -3,5 +3,8 @@
   "description": "AI-powered calorie detection and nutrition tracking system using image input and Gemini AI.",
   "requestFramePermissions": [
     "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

@@ -15,6 +15,9 @@ import '../../../core/services/gemini_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/animated_entry.dart';
 import '../../auth/providers/user_provider.dart';
+import '../widgets/calorie_progress_ring.dart';
+import '../widgets/healthy_food_suggestions.dart';
+import '../widgets/meal_reminders_sheet.dart';
 
 // Standalone Mock Database port matching the React code logic.
 const Map<String, Map<String, dynamic>> _foodDatabase = {
@@ -126,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Future<void> _logManual(ScanResult partialData, {required bool isSearchModal}) async {
+  Future<void> _logManual(ScanResult partialData, {required bool isSearchModal, bool shouldPop = true}) async {
     if (isSearchModal) Navigator.of(context).pop();
     
     setState(() => _isProcessing = true);
@@ -139,7 +142,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
       final saved = await storage.saveScanResult(finalScan);
       if (saved != null && mounted) {
-        if (!isSearchModal) Navigator.of(context).pop();
+        if (shouldPop && !isSearchModal) Navigator.of(context).pop();
         context.push('\${AppRoutes.result}/\${saved.id}', extra: saved);
       }
     } finally {
@@ -217,12 +220,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Daily Progress Card (Calorie fuel)
+                // Daily Progress Ring & Macro Overview
                 AnimatedFadeSlide(
                   delay: const Duration(milliseconds: 100),
-                  child: _buildCalorieCard(dailySummarySync, profile, calorieProgress),
+                  child: CalorieProgressRing(
+                    dailySummary: dailySummarySync,
+                    profile: profile,
+                    progress: calorieProgress,
+                  ),
                 ),
                 
+                const SizedBox(height: 24),
+
+                // Recurring Daily Meal Reminders Card
+                const AnimatedFadeSlide(
+                  delay: const Duration(milliseconds: 150),
+                  child: MealRemindersCard(),
+                ),
+
                 const SizedBox(height: 24),
 
                 // Water Tracker
@@ -330,6 +345,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const Icon(LucideIcons.chevronRight, color: AppColors.textTertiary),
                       ],
                     ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Suggested Healthy Food Options Section
+                AnimatedFadeSlide(
+                  delay: const Duration(milliseconds: 250),
+                  child: HealthyFoodSuggestions(
+                    dailySummary: dailySummarySync,
+                    profile: profile,
+                    onQuickLog: (scan) => _logManual(scan, isSearchModal: false, shouldPop: false),
                   ),
                 ),
 
