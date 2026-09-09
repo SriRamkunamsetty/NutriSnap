@@ -1,24 +1,33 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { auth } from '../firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { UserProfile, ScanResult, DailySummary } from '../types';
-import { getUserProfile, getScanHistory, getDailySummary, saveUserProfile } from '../services/storageService';
+import { UserProfile, ScanResult, DailySummary, AppUser } from '../types';
+import { 
+  getUserProfile, 
+  getScanHistory, 
+  getDailySummary, 
+  saveUserProfile, 
+  getActiveLocalUser, 
+  setActiveLocalUser,
+  clearAllLocalData
+} from '../services/storageService';
 import { sendLocalNotification } from '../lib/notifications';
 
 interface UserContextType {
-  user: User | null;
+  user: AppUser | null;
   profile: UserProfile | null;
   scans: ScanResult[];
   dailySummary: DailySummary | null;
   loading: boolean;
   refreshProfile: () => Promise<UserProfile | null>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  logout: () => void;
+  login: (userData: AppUser) => void;
+  clearUserData: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
@@ -27,14 +36,11 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (profile) {
       const newProfile = { ...profile, ...updates };
-      // Update state immediately for instant UI feedback
       setProfile(newProfile);
-      // Save to Firestore in the background
       try {
         await saveUserProfile(newProfile);
       } catch (error) {
-        console.error("Failed to save profile updates:", error);
-        // Optionally revert state if save fails, but usually we trust the local state
+        console.error("Failed to save profile updates to local storage:", error);
       }
     }
   };
@@ -57,81 +63,105 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
     };
 
-    // Check once immediately then every minute
     checkReminders();
     const interval = setInterval(checkReminders, 60000);
     return () => clearInterval(interval);
   }, [profile?.reminders]);
 
-  const refreshProfile = async () => {
+  const refreshProfile = async (): Promise<UserProfile | null> => {
     if (user) {
       const p = await getUserProfile(user.uid);
-      setProfile(p);
+      if (p) setProfile(p);
       return p;
     }
     return null;
   };
 
+  const logout = () => {
+    // Reset to clean local user or sign-out state
+    const cleanUser: AppUser = {
+      uid: `local_user_${Date.now()}`,
+      email: 'private.user@on-device.local',
+      displayName: 'NutriSnap User',
+      photoURL: '',
+    };
+    setActiveLocalUser(cleanUser);
+    setUser(cleanUser);
+  };
+
+  const login = (userData: AppUser) => {
+    setActiveLocalUser(userData);
+    setUser(userData);
+  };
+
+  const clearUserData = () => {
+    clearAllLocalData();
+    if (user) {
+      refreshProfile();
+    }
+  };
+
+  // Initialize on-device active user & profile
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Load profile
-        const p = await getUserProfile(currentUser.uid);
-        if (p) {
-          setProfile({
-            ...p,
-            height: p.height || 175,
-            weight: p.weight || 70,
-            calorieLimit: p.calorieLimit || 2000,
-            waterGoal: p.waterGoal || 2500,
-            proteinGoal: p.proteinGoal || 150,
-            carbsGoal: p.carbsGoal || 200,
-            fatsGoal: p.fatsGoal || 67
-          });
-        } else {
-          // Create initial profile if doesn't exist
-          const initialProfile: UserProfile = {
-            uid: currentUser.uid,
-            email: currentUser.email || '',
-            displayName: currentUser.displayName || 'User',
-            photoURL: currentUser.photoURL || '',
-            height: 175,
-            weight: 70,
-            bmi: 22.9,
-            goal: 'maintain',
-            calorieLimit: 2000,
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString()
-          };
-          await saveUserProfile(initialProfile);
-          setProfile(initialProfile);
-        }
+    const activeUser = getActiveLocalUser();
+    setUser(activeUser);
 
-        // Listen to scans
-        const unsubscribeScans = getScanHistory((s) => setScans(s));
-        
-        // Listen to daily summary
-        const unsubscribeSummary = getDailySummary((sum) => setDailySummary(sum));
-
-        setLoading(false);
-        return () => {
-          unsubscribeScans();
-          unsubscribeSummary();
+    const initUserData = async () => {
+      let p = await getUserProfile(activeUser.uid);
+      if (!p) {
+        const initialProfile: UserProfile = {
+          uid: activeUser.uid,
+          email: activeUser.email,
+          displayName: activeUser.displayName,
+          photoURL: activeUser.photoURL || '',
+          height: 175,
+          weight: 70,
+          bmi: 22.9,
+          goal: 'maintain',
+          calorieLimit: 2000,
+          waterGoal: 2500,
+          proteinGoal: 150,
+          carbsGoal: 200,
+          fatsGoal: 67,
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
         };
-      } else {
-        setProfile(null);
-        setScans([]);
-        setDailySummary(null);
-        setLoading(false);
+        await saveUserProfile(initialProfile);
+        p = initialProfile;
       }
-    });
 
-    return () => unsubscribeAuth();
-  }, []);
+      setProfile(p);
+
+      // Listen to local scans updates
+      const unsubscribeScans = getScanHistory((s) => setScans(s));
+
+      // Listen to daily summary updates
+      const unsubscribeSummary = getDailySummary((sum) => setDailySummary(sum));
+
+      setLoading(false);
+
+      return () => {
+        unsubscribeScans();
+        unsubscribeSummary();
+      };
+    };
+
+    initUserData();
+  }, [user?.uid]);
 
   return (
-    <UserContext.Provider value={{ user, profile, scans, dailySummary, loading, refreshProfile, updateProfile }}>
+    <UserContext.Provider value={{ 
+      user, 
+      profile, 
+      scans, 
+      dailySummary, 
+      loading, 
+      refreshProfile, 
+      updateProfile,
+      logout,
+      login,
+      clearUserData
+    }}>
       {children}
     </UserContext.Provider>
   );

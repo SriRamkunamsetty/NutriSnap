@@ -1,314 +1,398 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  onSnapshot, 
-  addDoc, 
-  Timestamp,
-  deleteDoc,
-  increment
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, auth, storage } from '../firebase';
-import { UserProfile, ScanResult, ChatMessage, DailySummary } from '../types';
+import { UserProfile, ScanResult, ChatMessage, DailySummary, AppUser } from '../types';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
+/**
+ * NutriSnap AI - 100% On-Device Private Local Storage Engine
+ * Eliminates all external cloud database & storage dependencies.
+ * All personal user health data, scans, water logs, and chat records
+ * remain exclusively stored in on-device browser storage.
+ */
 
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
+const STORAGE_KEYS = {
+  ACTIVE_USER: 'nutrisnap_active_user',
+  PROFILE_PREFIX: 'nutrisnap_profile_',
+  SCANS_PREFIX: 'nutrisnap_scans_',
+  SUMMARIES_PREFIX: 'nutrisnap_summaries_',
+  CHAT_PREFIX: 'nutrisnap_chat_',
+};
+
+const EVENT_NAME = 'nutrisnap_local_storage_updated';
+
+function notifyStorageChange(entity: string) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { entity } }));
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
 }
 
+// Convert File / Blob to compressed Base64 Data URL for local private storage
+export const fileToBase64 = (file: File | Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+// Current active local user management
+export const getActiveLocalUser = (): AppUser => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_USER);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    console.warn('Failed to read active user from localStorage:', e);
+  }
+  
+  // Default on-device private user
+  const defaultUser: AppUser = {
+    uid: 'local_user_default',
+    email: 'private.user@on-device.local',
+    displayName: 'NutriSnap User',
+    photoURL: '',
+  };
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_USER, JSON.stringify(defaultUser));
+  return defaultUser;
+};
+
+export const setActiveLocalUser = (user: AppUser): void => {
+  localStorage.setItem(STORAGE_KEYS.ACTIVE_USER, JSON.stringify(user));
+  notifyStorageChange('user');
+};
+
+// Image storage - completely on-device
 export const uploadProfileImage = async (file: File): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not authenticated");
-  
-  const storageRef = ref(storage, `users/${user.uid}/profile_${Date.now()}`);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  
-  // Update profile with new photoURL
-  await saveUserProfile({ photoURL: downloadURL });
-  
-  return downloadURL;
+  const user = getActiveLocalUser();
+  const dataUrl = await fileToBase64(file);
+  await saveUserProfile({ photoURL: dataUrl });
+  return dataUrl;
 };
 
 export const uploadAIAvatar = async (file: File): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not authenticated");
-  
-  const storageRef = ref(storage, `users/${user.uid}/ai_avatar_${Date.now()}`);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  
-  // Update profile with new aiAvatarURL
-  await saveUserProfile({ aiAvatarURL: downloadURL });
-  
-  return downloadURL;
+  const dataUrl = await fileToBase64(file);
+  await saveUserProfile({ aiAvatarURL: dataUrl });
+  return dataUrl;
 };
 
 export const uploadBodyImage = async (file: File): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not authenticated");
-  
-  const storageRef = ref(storage, `users/${user.uid}/body_scans/scan_${Date.now()}`);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  
-  // Update profile with new bodyScanURL
-  await saveUserProfile({ bodyScanURL: downloadURL });
-  
-  return downloadURL;
+  const dataUrl = await fileToBase64(file);
+  await saveUserProfile({ bodyScanURL: dataUrl });
+  return dataUrl;
 };
 
 export const uploadScanImage = async (file: File): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not authenticated");
-  
-  const storageRef = ref(storage, `users/${user.uid}/scans/scan_${Date.now()}`);
-  await uploadBytes(storageRef, file);
-  return await getDownloadURL(storageRef);
+  return await fileToBase64(file);
 };
 
-export const saveUserProfile = async (profile: Partial<UserProfile>) => {
-  const user = auth.currentUser;
-  if (!user) throw new Error("User not authenticated");
+// User profile management
+export const saveUserProfile = async (profileUpdate: Partial<UserProfile>): Promise<void> => {
+  const user = getActiveLocalUser();
+  const uid = profileUpdate.uid || user.uid;
+  const key = `${STORAGE_KEYS.PROFILE_PREFIX}${uid}`;
   
-  const uid = user.uid;
-  const path = `users/${uid}`;
+  let existingProfile: Partial<UserProfile> = {};
   try {
-    const userDoc = doc(db, 'users', uid);
-    await setDoc(userDoc, {
-      ...profile,
-      uid,
-      email: user.email,
-      updatedAt: Timestamp.now()
-    }, { merge: true });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      existingProfile = JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error('Error reading profile:', e);
   }
+
+  const updatedProfile: UserProfile = {
+    uid,
+    email: user.email,
+    displayName: user.displayName,
+    height: 175,
+    weight: 70,
+    bmi: 22.9,
+    goal: 'maintain',
+    calorieLimit: 2000,
+    waterGoal: 2500,
+    proteinGoal: 150,
+    carbsGoal: 200,
+    fatsGoal: 67,
+    createdAt: new Date().toISOString(),
+    ...existingProfile,
+    ...profileUpdate,
+    lastLoginAt: new Date().toISOString(),
+  };
+
+  localStorage.setItem(key, JSON.stringify(updatedProfile));
+  notifyStorageChange('profile');
 };
 
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-  const path = `users/${uid}`;
   try {
-    const userDoc = doc(db, 'users', uid);
-    const snap = await getDoc(userDoc);
-    if (snap.exists()) {
-      return snap.data() as UserProfile;
+    const key = `${STORAGE_KEYS.PROFILE_PREFIX}${uid}`;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored) as UserProfile;
     }
-    return null;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
-    return null;
+  } catch (e) {
+    console.error('Error retrieving user profile from local storage:', e);
   }
+  return null;
 };
 
-export const updateDailySummary = async (scan: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
-
-  const date = new Date().toISOString().split('T')[0];
-  const path = `users/${uid}/daily_summary/${date}`;
-  
+// Daily summary management
+const getSummariesMap = (uid: string): Record<string, DailySummary> => {
   try {
-    const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
-    await setDoc(summaryDoc, {
-      date,
-      totalCalories: increment(scan.calories),
-      totalProtein: increment(scan.protein),
-      totalCarbs: increment(scan.carbs),
-      totalFats: increment(scan.fats),
-    }, { merge: true });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    const key = `${STORAGE_KEYS.SUMMARIES_PREFIX}${uid}`;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    console.error('Error parsing daily summaries:', e);
+    return {};
   }
 };
 
-export const updateWaterIntake = async (amount: number) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
+const saveSummariesMap = (uid: string, map: Record<string, DailySummary>): void => {
+  const key = `${STORAGE_KEYS.SUMMARIES_PREFIX}${uid}`;
+  localStorage.setItem(key, JSON.stringify(map));
+  notifyStorageChange('daily_summary');
+};
 
+export const updateDailySummary = async (scan: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>): Promise<void> => {
+  const user = getActiveLocalUser();
   const date = new Date().toISOString().split('T')[0];
-  const path = `users/${uid}/daily_summary/${date}`;
+  const summaries = getSummariesMap(user.uid);
   
-  try {
-    const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
-    await setDoc(summaryDoc, {
-      date,
-      totalWater: increment(amount),
-    }, { merge: true });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
-  }
+  const current = summaries[date] || {
+    date,
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFats: 0,
+    totalWater: 0,
+  };
+
+  summaries[date] = {
+    date,
+    totalCalories: Math.round((current.totalCalories || 0) + (scan.calories || 0)),
+    totalProtein: Math.round((current.totalProtein || 0) + (scan.protein || 0)),
+    totalCarbs: Math.round((current.totalCarbs || 0) + (scan.carbs || 0)),
+    totalFats: Math.round((current.totalFats || 0) + (scan.fats || 0)),
+    totalWater: current.totalWater || 0,
+  };
+
+  saveSummariesMap(user.uid, summaries);
 };
 
-export const getDailySummary = (callback: (summary: DailySummary | null) => void) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return () => {};
-
+export const updateWaterIntake = async (amount: number): Promise<void> => {
+  const user = getActiveLocalUser();
   const date = new Date().toISOString().split('T')[0];
-  const path = `users/${uid}/daily_summary/${date}`;
-  const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
+  const summaries = getSummariesMap(user.uid);
 
-  return onSnapshot(summaryDoc, (snap) => {
-    if (snap.exists()) {
-      callback(snap.data() as DailySummary);
-    } else {
-      callback(null);
+  const current = summaries[date] || {
+    date,
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFats: 0,
+    totalWater: 0,
+  };
+
+  summaries[date] = {
+    ...current,
+    totalWater: Math.max(0, (current.totalWater || 0) + amount),
+  };
+
+  saveSummariesMap(user.uid, summaries);
+};
+
+export const getDailySummary = (callback: (summary: DailySummary | null) => void): (() => void) => {
+  const user = getActiveLocalUser();
+  const date = new Date().toISOString().split('T')[0];
+
+  const emitCurrent = () => {
+    const summaries = getSummariesMap(user.uid);
+    callback(summaries[date] || null);
+  };
+
+  // Immediate invoke
+  emitCurrent();
+
+  const listener = (e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (!customEvent.detail || customEvent.detail.entity === 'daily_summary') {
+      emitCurrent();
     }
-  }, (error) => {
-    handleFirestoreError(error, OperationType.GET, path);
-  });
+  };
+
+  window.addEventListener(EVENT_NAME, listener);
+  return () => window.removeEventListener(EVENT_NAME, listener);
 };
 
 export const getDailySummaryOnce = async (): Promise<DailySummary | null> => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return null;
-
+  const user = getActiveLocalUser();
   const date = new Date().toISOString().split('T')[0];
-  const path = `users/${uid}/daily_summary/${date}`;
-  const summaryDoc = doc(db, 'users', uid, 'daily_summary', date);
+  const summaries = getSummariesMap(user.uid);
+  return summaries[date] || null;
+};
 
+// Scans management
+const getScansList = (uid: string): ScanResult[] => {
   try {
-    const snap = await getDoc(summaryDoc);
-    if (snap.exists()) {
-      return snap.data() as DailySummary;
-    }
-    return null;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
-    return null;
+    const key = `${STORAGE_KEYS.SCANS_PREFIX}${uid}`;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Error parsing scans list:', e);
+    return [];
   }
 };
 
-export const saveScanResult = async (scan: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("User not authenticated");
-  
-  const path = `users/${uid}/scans`;
-  try {
-    const scanData = {
-      ...scan,
-      userId: uid,
-      timestamp: Timestamp.now(),
-    };
-    const docRef = await addDoc(collection(db, 'users', uid, 'scans'), scanData);
-    
-    // Update daily summary
-    await updateDailySummary(scan);
-    
-    return { ...scanData, id: docRef.id, timestamp: scanData.timestamp.toDate().toISOString() };
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
-  }
+const saveScansList = (uid: string, scans: ScanResult[]): void => {
+  const key = `${STORAGE_KEYS.SCANS_PREFIX}${uid}`;
+  localStorage.setItem(key, JSON.stringify(scans));
+  notifyStorageChange('scans');
 };
 
-export const getScanHistory = (callback: (scans: ScanResult[]) => void) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return () => {};
-  
-  const path = `users/${uid}/scans`;
-  const q = query(
-    collection(db, 'users', uid, 'scans'),
-    orderBy('timestamp', 'desc'),
-    limit(50)
-  );
-  
-  return onSnapshot(q, (snapshot) => {
-    const scans = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id,
-      timestamp: (doc.data().timestamp as Timestamp).toDate().toISOString()
-    })) as ScanResult[];
+export const saveScanResult = async (
+  scan: Omit<ScanResult, 'id' | 'userId' | 'timestamp'>
+): Promise<ScanResult> => {
+  const user = getActiveLocalUser();
+  const newScan: ScanResult = {
+    ...scan,
+    id: `scan_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    userId: user.uid,
+    timestamp: new Date().toISOString(),
+  };
+
+  const scans = getScansList(user.uid);
+  scans.unshift(newScan);
+  saveScansList(user.uid, scans);
+
+  // Automatically update today's daily nutritional summary
+  await updateDailySummary(scan);
+
+  return newScan;
+};
+
+export const getScanHistory = (callback: (scans: ScanResult[]) => void): (() => void) => {
+  const user = getActiveLocalUser();
+
+  const emitCurrent = () => {
+    const scans = getScansList(user.uid);
     callback(scans);
-  }, (error) => {
-    handleFirestoreError(error, OperationType.LIST, path);
-  });
+  };
+
+  emitCurrent();
+
+  const listener = (e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (!customEvent.detail || customEvent.detail.entity === 'scans') {
+      emitCurrent();
+    }
+  };
+
+  window.addEventListener(EVENT_NAME, listener);
+  return () => window.removeEventListener(EVENT_NAME, listener);
 };
 
-export const saveChatMessage = async (role: 'user' | 'model', text: string) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("User not authenticated");
-  
-  const path = `users/${uid}/messages`;
+// Chat history management
+const getChatList = (uid: string): ChatMessage[] => {
   try {
-    await addDoc(collection(db, 'users', uid, 'messages'), {
-      userId: uid,
-      role,
-      text,
-      timestamp: Timestamp.now()
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
+    const key = `${STORAGE_KEYS.CHAT_PREFIX}${uid}`;
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.error('Error parsing chat messages:', e);
+    return [];
   }
 };
 
-export const getChatHistory = (callback: (messages: ChatMessage[]) => void) => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return () => {};
-  
-  const path = `users/${uid}/messages`;
-  const q = query(
-    collection(db, 'users', uid, 'messages'),
-    orderBy('timestamp', 'asc'),
-    limit(100)
-  );
-  
-  return onSnapshot(q, (snapshot) => {
-    const messages = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id,
-      timestamp: (doc.data().timestamp as Timestamp).toDate().toISOString()
-    })) as ChatMessage[];
+const saveChatList = (uid: string, messages: ChatMessage[]): void => {
+  const key = `${STORAGE_KEYS.CHAT_PREFIX}${uid}`;
+  localStorage.setItem(key, JSON.stringify(messages));
+  notifyStorageChange('chat');
+};
+
+export const saveChatMessage = async (role: 'user' | 'model', text: string): Promise<ChatMessage> => {
+  const user = getActiveLocalUser();
+  const newMessage: ChatMessage = {
+    id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    userId: user.uid,
+    role,
+    text,
+    timestamp: new Date().toISOString(),
+  };
+
+  const messages = getChatList(user.uid);
+  messages.push(newMessage);
+  saveChatList(user.uid, messages);
+
+  return newMessage;
+};
+
+export const getChatHistory = (callback: (messages: ChatMessage[]) => void): (() => void) => {
+  const user = getActiveLocalUser();
+
+  const emitCurrent = () => {
+    const messages = getChatList(user.uid);
     callback(messages);
-  }, (error) => {
-    handleFirestoreError(error, OperationType.LIST, path);
-  });
+  };
+
+  emitCurrent();
+
+  const listener = (e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (!customEvent.detail || customEvent.detail.entity === 'chat') {
+      emitCurrent();
+    }
+  };
+
+  window.addEventListener(EVENT_NAME, listener);
+  return () => window.removeEventListener(EVENT_NAME, listener);
 };
 
-export const clearChatHistory = async () => {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("User not authenticated");
-  
-  const path = `users/${uid}/messages`;
+export const clearChatHistory = async (): Promise<void> => {
+  const user = getActiveLocalUser();
+  saveChatList(user.uid, []);
+};
+
+// Complete on-device data backup, export, and privacy controls
+export const exportLocalData = (): string => {
+  const user = getActiveLocalUser();
+  const uid = user.uid;
+  const backup = {
+    version: '2.0.0-on-device',
+    exportDate: new Date().toISOString(),
+    user,
+    profile: localStorage.getItem(`${STORAGE_KEYS.PROFILE_PREFIX}${uid}`),
+    scans: localStorage.getItem(`${STORAGE_KEYS.SCANS_PREFIX}${uid}`),
+    summaries: localStorage.getItem(`${STORAGE_KEYS.SUMMARIES_PREFIX}${uid}`),
+    chat: localStorage.getItem(`${STORAGE_KEYS.CHAT_PREFIX}${uid}`),
+  };
+  return JSON.stringify(backup, null, 2);
+};
+
+export const importLocalData = (jsonString: string): boolean => {
   try {
-    const q = query(collection(db, 'users', uid, 'messages'));
-    const snapshot = await getDocs(q);
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
+    const data = JSON.parse(jsonString);
+    if (!data.user || !data.user.uid) return false;
+    const uid = data.user.uid;
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_USER, JSON.stringify(data.user));
+    if (data.profile) localStorage.setItem(`${STORAGE_KEYS.PROFILE_PREFIX}${uid}`, data.profile);
+    if (data.scans) localStorage.setItem(`${STORAGE_KEYS.SCANS_PREFIX}${uid}`, data.scans);
+    if (data.summaries) localStorage.setItem(`${STORAGE_KEYS.SUMMARIES_PREFIX}${uid}`, data.summaries);
+    if (data.chat) localStorage.setItem(`${STORAGE_KEYS.CHAT_PREFIX}${uid}`, data.chat);
+    notifyStorageChange('all');
+    return true;
+  } catch (e) {
+    console.error('Failed to import local backup:', e);
+    return false;
   }
+};
+
+export const clearAllLocalData = (): void => {
+  const user = getActiveLocalUser();
+  const uid = user.uid;
+  localStorage.removeItem(`${STORAGE_KEYS.PROFILE_PREFIX}${uid}`);
+  localStorage.removeItem(`${STORAGE_KEYS.SCANS_PREFIX}${uid}`);
+  localStorage.removeItem(`${STORAGE_KEYS.SUMMARIES_PREFIX}${uid}`);
+  localStorage.removeItem(`${STORAGE_KEYS.CHAT_PREFIX}${uid}`);
+  notifyStorageChange('all');
 };

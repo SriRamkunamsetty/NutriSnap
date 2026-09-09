@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets, Plus, X, Trash2, Bot, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth } from '../firebase';
-import { saveUserProfile, uploadProfileImage, uploadAIAvatar, clearChatHistory, uploadBodyImage, saveScanResult } from '../services/storageService';
+import { saveUserProfile, uploadProfileImage, clearChatHistory, uploadBodyImage, saveScanResult, exportLocalData, importLocalData, clearAllLocalData } from '../services/storageService';
 import { analyzeBodyImage } from '../services/geminiService';
 import { generateHealthReport } from '../services/pdfService';
 import { UserProfile, Goal, BodyType, Reminder } from '../types';
@@ -18,11 +17,10 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const SettingsScreen: React.FC = () => {
-  const { profile, refreshProfile, dailySummary, updateProfile, scans } = useUser();
+  const { profile, refreshProfile, dailySummary, updateProfile, scans, user, logout } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
-  const [isUploadingAIAvatar, setIsUploadingAIAvatar] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showBMIInfo, setShowBMIInfo] = useState(false);
   const [showBodyScanSuccess, setShowBodyScanSuccess] = useState(false);
@@ -34,7 +32,8 @@ const SettingsScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
-  const aiAvatarInputRef = useRef<HTMLInputElement>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const [backupNotice, setBackupNotice] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     height: 175,
@@ -47,8 +46,8 @@ const SettingsScreen: React.FC = () => {
     proteinPct: 30,
     carbsPct: 40,
     fatsPct: 30,
-    displayName: auth.currentUser?.displayName || 'User',
-    photoURL: auth.currentUser?.photoURL || '',
+    displayName: user?.displayName || 'User',
+    photoURL: user?.photoURL || '',
     aiAvatarURL: '',
     bmi: 22.9,
     bodyType: 'unknown' as BodyType,
@@ -82,8 +81,8 @@ const SettingsScreen: React.FC = () => {
         proteinPct: pPct,
         carbsPct: cPct,
         fatsPct: fPct,
-        displayName: profile.displayName || auth.currentUser?.displayName || 'User',
-        photoURL: profile.photoURL || auth.currentUser?.photoURL || '',
+        displayName: profile.displayName || user?.displayName || 'User',
+        photoURL: profile.photoURL || user?.photoURL || '',
         aiAvatarURL: profile.aiAvatarURL || '',
         bmi: profile.bmi || 22.9,
         bodyType: profile.bodyType || 'unknown',
@@ -378,28 +377,6 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleAIAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingAIAvatar(true);
-    triggerHaptic(hapticPatterns.medium);
-    
-    try {
-      const url = await uploadAIAvatar(file);
-      // Update local form data
-      setFormData(prev => ({ ...prev, aiAvatarURL: url }));
-      // Update global context for instant reactivity in other screens
-      await updateProfile({ aiAvatarURL: url });
-      setIsUploadingAIAvatar(false);
-      triggerHaptic(hapticPatterns.success);
-    } catch (error) {
-      console.error("AI Avatar upload failed", error);
-      setIsUploadingAIAvatar(false);
-      triggerHaptic(hapticPatterns.error);
-    }
-  };
-
   const handleClearChat = async () => {
     setIsClearing(true);
     triggerHaptic(hapticPatterns.medium);
@@ -436,13 +413,9 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     triggerHaptic(hapticPatterns.medium);
-    try {
-      await auth.signOut();
-    } catch (error) {
-      console.error("Sign out failed", error);
-    }
+    logout();
   };
 
   return (
@@ -475,95 +448,54 @@ const SettingsScreen: React.FC = () => {
 
       {/* Profile Header */}
       <div className="flex flex-col items-center text-center space-y-4 pt-4">
-        <div className="flex gap-8 items-end">
-          {/* User Avatar */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative group">
-              <button 
-                onClick={() => profileInputRef.current?.click()}
-                disabled={isUploadingProfile}
-                className="w-24 h-24 bg-green-500 rounded-[32px] flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-green-500/30 ios-shadow group-hover:scale-105 transition-transform overflow-hidden relative"
-              >
-                {formData.photoURL ? (
-                  <img 
-                    src={formData.photoURL} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  formData.displayName.charAt(0)
-                )}
-                
-                {isUploadingProfile && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Loader2 size={24} className="animate-spin text-white" />
-                  </div>
-                )}
-                
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <Camera size={20} className="text-white" />
+        {/* User Avatar */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative group">
+            <button 
+              onClick={() => profileInputRef.current?.click()}
+              disabled={isUploadingProfile}
+              className="w-24 h-24 bg-green-500 rounded-[32px] flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-green-500/30 ios-shadow group-hover:scale-105 transition-transform overflow-hidden relative"
+            >
+              {formData.photoURL ? (
+                <img 
+                  src={formData.photoURL} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                formData.displayName.charAt(0)
+              )}
+              
+              {isUploadingProfile && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <Loader2 size={24} className="animate-spin text-white" />
                 </div>
-              </button>
-              <input 
-                type="file" 
-                ref={profileInputRef} 
-                onChange={handleProfileImageChange} 
-                accept="image/*" 
-                className="hidden" 
-              />
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 glass rounded-xl flex items-center justify-center text-green-600 ios-shadow pointer-events-none">
-                <User size={16} strokeWidth={2.5} />
+              )}
+              
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <Camera size={20} className="text-white" />
               </div>
+            </button>
+            <input 
+              type="file" 
+              ref={profileInputRef} 
+              onChange={handleProfileImageChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 glass rounded-xl flex items-center justify-center text-green-600 ios-shadow pointer-events-none">
+              <User size={16} strokeWidth={2.5} />
             </div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Avatar</span>
           </div>
-
-          {/* AI Avatar */}
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative group">
-              <button 
-                onClick={() => aiAvatarInputRef.current?.click()}
-                disabled={isUploadingAIAvatar}
-                className="w-24 h-24 bg-purple-500 rounded-[32px] flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-purple-500/30 ios-shadow group-hover:scale-105 transition-transform overflow-hidden relative"
-              >
-                {formData.aiAvatarURL ? (
-                  <img 
-                    src={formData.aiAvatarURL} 
-                    alt="AI Avatar" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <Bot size={40} />
-                )}
-                
-                {isUploadingAIAvatar && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <Loader2 size={24} className="animate-spin text-white" />
-                  </div>
-                )}
-                
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <Camera size={20} className="text-white" />
-                </div>
-              </button>
-              <input 
-                type="file" 
-                ref={aiAvatarInputRef} 
-                onChange={handleAIAvatarChange} 
-                accept="image/*" 
-                className="hidden" 
-              />
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 glass rounded-xl flex items-center justify-center text-purple-600 ios-shadow pointer-events-none">
-                <Sparkles size={16} strokeWidth={2.5} />
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI Coach Avatar</span>
-          </div>
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Your Avatar</span>
         </div>
         <div className="space-y-1">
-          <p className="text-sm text-gray-400 font-medium tracking-tight">{auth.currentUser?.email}</p>
+          <p className="text-sm text-gray-400 font-medium tracking-tight">{user?.email || 'private.user@on-device.local'}</p>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+            <Shield size={12} className="text-emerald-600" />
+            <span>100% On-Device Data Privacy</span>
+          </div>
         </div>
         {!isEditing && (
           <motion.button 
@@ -1077,6 +1009,82 @@ const SettingsScreen: React.FC = () => {
           )}
           {isGeneratingReport ? 'Generating Report...' : 'Download Health Report (PDF)'}
         </button>
+      </div>
+
+      {/* 100% On-Device Data Privacy & Local Storage Controls */}
+      <div className="bg-white/80 backdrop-blur-md rounded-[32px] p-6 border border-emerald-100 ios-shadow space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-100/70 text-emerald-700 flex items-center justify-center">
+            <Shield size={20} strokeWidth={2.5} />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900">On-Device Privacy & Backup</h3>
+            <p className="text-xs text-gray-500">Your health data never leaves this device</p>
+          </div>
+        </div>
+
+        {backupNotice && (
+          <div className="p-3 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-2xl border border-emerald-200 flex items-center justify-between">
+            <span>{backupNotice}</span>
+            <button onClick={() => setBackupNotice(null)} className="text-emerald-700 hover:text-emerald-900"><X size={14} /></button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <button 
+            type="button"
+            onClick={() => {
+              triggerHaptic(hapticPatterns.light);
+              const data = exportLocalData();
+              const blob = new Blob([data], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `nutrisnap-backup-${new Date().toISOString().split('T')[0]}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              setBackupNotice('Backup downloaded securely to your device!');
+            }}
+            className="py-3.5 px-4 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-emerald-100/60 transition-all ios-tap"
+          >
+            <Save size={16} strokeWidth={2.5} />
+            Export Private JSON
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              triggerHaptic(hapticPatterns.light);
+              backupFileInputRef.current?.click();
+            }}
+            className="py-3.5 px-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-100 transition-all ios-tap"
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Restore Backup
+          </button>
+          <input 
+            type="file" 
+            ref={backupFileInputRef}
+            accept=".json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const text = event.target?.result as string;
+                const ok = importLocalData(text);
+                if (ok) {
+                  setBackupNotice('Backup restored successfully!');
+                  refreshProfile();
+                } else {
+                  setBackupNotice('Invalid backup file format.');
+                }
+              };
+              reader.readAsText(file);
+            }}
+          />
+        </div>
       </div>
 
       <button 

@@ -9,6 +9,13 @@ export interface Reminder {
   enabled: boolean;
 }
 
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
