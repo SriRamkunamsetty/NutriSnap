@@ -1,202 +1,235 @@
-# NutriSnap AI - Intelligent Nutrition & Fitness Companion
+# NutriSnap AI - Privacy-First Nutrition & Fitness Companion
 
-NutriSnap is a production-grade health and fitness application designed to simplify the complex process of nutrition tracking. By leveraging cutting-edge Artificial Intelligence and a seamless mobile-first user experience, NutriSnap transforms a simple photo into a detailed nutritional breakdown and personalized coaching session.
-
-## ✨ Key Features
-
-### 📸 AI-Powered Food Recognition
-Transform your meal photos into actionable data. Using **Gemini 3.1 Pro's multimodal capabilities**, NutriSnap identifies food items, estimates portion sizes, and calculates a full nutritional breakdown (Calories, Protein, Carbs, Fats) with high precision.
-- **Multimodal Analysis**: Processes both image and text context.
-- **Portion Estimation**: Intelligently guesses weight/volume to calculate macros.
-- **Fallback Database**: Includes a local fallback for common items if the AI is unreachable.
-
-### 🤖 Personalized AI Coach
-More than just a tracker, NutriSnap includes a **conversational AI coach**. It analyzes your entire history, current goals, and daily progress to provide tailored advice, answer nutrition questions, and keep you motivated.
-- **Context-Aware**: Knows your BMI, current calorie balance, and recent meals.
-- **Proactive Suggestions**: Offers follow-up questions to deepen your understanding.
-- **Motivational Tone**: Adapts its personality based on your progress and goals.
-
-### 🧘 AI Body Analysis
-Go beyond the scale. Upload a body scan image to receive an AI-driven estimate of your **Body Type** and **Body Fat Percentage**. This helps track physical composition changes that weight alone can't show.
-- **Visual Progress**: Stores body scan history to visualize physical changes.
-- **Privacy-First**: Images are stored securely in your private user folder.
-
-### 💧 Smart Hydration Tracking
-Stay hydrated with a visually stunning **live liquid wave animation**. The interface provides real-time feedback on your water intake goals with fluid, spring-physics-based transitions.
-- **Interactive Waves**: The "water" level rises and ripples as you log intake.
-- **Quick Log**: One-tap buttons for common amounts (250ml, 500ml).
-
-### 📈 Advanced Analytics & Trends
-Visualize your journey with interactive charts. Track your calorie trends and macronutrient distribution over time using **Recharts-powered dashboards**, helping you identify patterns and optimize your diet.
-- **Weekly Trends**: Composed charts showing calories (line) and macros (bars) together.
-- **Macro Breakdown**: Detailed tooltips showing grams and percentage of daily goals.
-
-### 🎯 Customizable Nutritional Goals
-Tailor the app to your specific needs. Set custom calorie limits and macronutrient ratios (Protein/Carbs/Fats) using **intuitive sliders**.
-- **Dynamic Recalculation**: BMI and macro goals are updated instantly as you change your metrics.
-- **Smart Defaults**: Provides recommended targets based on your weight and fitness objective.
-
-### 🗓️ Comprehensive History Management
-Access a detailed log of every meal and body scan. Filter your history by date or search for specific items to review your past choices and progress.
-- **Skeleton Loading**: Smooth transitions while filtering large history sets.
-- **Image Persistence**: Every log includes the original photo stored in the cloud.
-
-### 🔐 Secure & Private
-Your data is protected by **Firebase Authentication** and secured with strict Firestore rules. We support Google, GitHub, and Email/Password login methods.
+NutriSnap AI is an intelligent, privacy-first nutrition and fitness tracking application powered by Google Gemini AI. It transforms food photos into detailed nutritional breakdowns, tracks body composition, and provides real-time personalized health coaching—while keeping **100% of user data securely on-device with zero external cloud database tracking**.
 
 ---
 
-## 🔑 APIs & Secrets
+## 🎯 Project Overview & Privacy Philosophy
 
-To run NutriSnap AI, you need to configure the following environment variables and configuration files:
+Unlike traditional fitness apps that upload sensitive meals, body scans, and health records to remote servers, NutriSnap AI adheres to a strict **On-Device Data Privacy Model**:
 
-### 1. Gemini API (`GEMINI_API_KEY`)
-- **Provider**: Google AI Studio
-- **Usage**: Powers the `analyzeFoodImage`, `analyzeBodyImage`, and `getAICoachResponse` services.
-- **Setup**: Obtain a key from [aistudio.google.com](https://aistudio.google.com/).
+- **Zero Cloud Database Tracking**: No remote Firestore or cloud databases hold your nutritional logs, scans, or chats.
+- **On-Device Storage Engine**: All meals, body scans, hydration logs, and AI conversations reside locally (SQLite database and local app directories on mobile; secure client storage with image compression on web).
+- **Automated 30-Day Auto-Purge & Email Backup**:
+  - Automatically evaluates stored logs on app startup and user login.
+  - Prior to cleaning records older than 30 days, the engine compiles a complete, structured health record archive and dispatches it directly to the user's login email ID.
+  - Once verified, aged database records and orphaned images are safely purged from local storage, preserving device memory without data loss.
+- **Private Data Export & Restore**: Users can export full backups of their health records as encrypted/portable JSON files and restore them at any time.
 
-### 2. Firebase Configuration (`firebase-applet-config.json`)
-- **Provider**: Google Firebase
-- **Usage**: Used for Authentication, Firestore (Database), and Cloud Storage.
-- **Required Services**:
-  - **Authentication**: Enable Google, GitHub, and Email/Password providers.
-  - **Firestore**: Create a database in "Native Mode".
-  - **Storage**: Enable a storage bucket for user uploads.
+---
 
-### 3. GitHub OAuth (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`)
-- **Provider**: GitHub Developer Settings
-- **Usage**: Enables "Sign in with GitHub" functionality.
-- **Setup**: Create a new OAuth App on GitHub and set the callback URL to your app's domain.
+## ✨ Key Features
 
-### 4. Google OAuth
-- **Provider**: Google Cloud Console
-- **Usage**: Enables "Sign in with Google" functionality.
-- **Setup**: Usually handled automatically by Firebase Auth once enabled in the Firebase Console.
+### 📸 AI-Powered Food Recognition (Multimodal Gemini Vision)
+Capture or upload a photo of any meal or snack:
+- **Instant Macro Breakdown**: Calculates calories, protein, carbohydrates, and fats in real-time.
+- **Portion & Weight Estimation**: Accurately estimates portion sizes and ingredients using Gemini multimodal reasoning.
+- **Confidence & Detailed Descriptions**: Highlights detected foods and notes dietary balance.
+- **Offline & Fallback Database**: Built-in nutritional database for common items when offline.
+
+### 🤖 Personalized AI Health & Nutrition Coach
+An interactive, context-aware conversational AI coach:
+- **Holistic Context Awareness**: Factors in your BMI, weight targets, calorie limits, today's macro intake, and recent meal scans.
+- **Proactive & Actionable**: Suggests follow-up questions, meal adjustments, and healthier alternatives.
+- **Hostel & Budget Modes**: Tailored advice for college students and users managing specific grocery budgets.
+
+### 🧘 AI Body Composition & Visual Progress
+Track physical composition beyond just numbers on a scale:
+- **AI Body Scan Estimation**: Evaluates body type (Ectomorph, Mesomorph, Endomorph), body fat percentage, and muscle mass index.
+- **On-Device Image Storage**: Body scan photos are compressed and kept exclusively in local app storage.
+
+### 💧 Smart Hydration Tracking
+Monitor water intake with an interactive live liquid wave animation:
+- **Spring-Physics Wave**: Responsive wave level dynamically adjusts as you log intake.
+- **Quick-Log Shortcuts**: One-tap increments (250ml, 500ml) and customizable daily hydration targets.
+
+### 📈 Advanced Analytics & Historical Trends
+Comprehensive data visualization for long-term health tracking:
+- **Weekly & Monthly Trends**: Composed charts showing calorie intake lines alongside macro distribution bars.
+- **Goal Adherence**: Visual progress bars and breakdown tooltips comparing intake against personalized macro goals.
+- **Meal History**: Filterable, searchable timeline with instant deletion and meal detail views.
+
+### 🎯 Dynamic Nutritional Goal Calculator
+Customizable calorie limits and macronutrient distribution:
+- **Interactive Ratio Sliders**: Seamlessly balance protein, carbs, and fats percentages.
+- **Dynamic Recalculation**: Basal metabolic rate (BMR) and recommended daily allowances update dynamically based on age, gender, height, weight, and activity level.
 
 ---
 
 ## 🏗 System Architecture
 
-The application follows a modern, serverless full-stack architecture optimized for low latency and high scalability.
-
-- **Frontend**: React 18 Single Page Application (SPA) built with Vite and TypeScript.
-- **Styling**: Tailwind CSS 4.0 for utility-first design, following a premium iOS aesthetic with glassmorphism and fluid animations.
-- **State Management**: React Context API (`UserContext`) for global state, including user profile, real-time scan history, and daily nutritional summaries.
-- **Backend-as-a-Service**: Firebase (Firestore for real-time data, Auth for secure identity, Storage for high-res images).
-- **AI Engine**: Google Gemini 3.1 Pro and Flash models for multimodal image analysis and conversational coaching.
-- **Haptics & Notifications**: Custom integration for tactile feedback and local reminders.
-
-## 📊 Block Diagram
+NutriSnap AI is built as a dual-platform ecosystem featuring both a modern Web application and a native Flutter mobile application.
 
 ```mermaid
 graph TD
-    A[User Device / Browser] -->|React SPA| B(NutriSnap Frontend)
-    B -->|Auth Request| C{Firebase Auth}
-    B -->|Image Upload| D[Firebase Storage]
-    B -->|Data Sync| E[(Firestore DB)]
-    B -->|Multimodal Prompt| F[Gemini 3.1 Pro API]
-    F -->|JSON Response| B
-    E -->|Real-time Updates| B
-    D -->|CDN URL| B
-    B -->|Local Notification| G[User Notification System]
+    subgraph "User Device (100% On-Device Storage)"
+        ClientApp["NutriSnap Client (Web / Flutter)"]
+        LocalDB[("Local Database (SQLite / LocalStorage)")]
+        LocalFiles["Local File Storage (Profiles & Scans)"]
+        PurgeEngine["30-Day Auto-Purge & Email Engine"]
+    end
+
+    subgraph "AI Inference (Stateless)"
+        GeminiAPI["Google Gemini API (Vision & Text)"]
+    end
+
+    subgraph "User Privacy Delivery"
+        UserEmail["User Login Email ID"]
+    end
+
+    ClientApp -->|Store Profiles, Scans, Summaries| LocalDB
+    ClientApp -->|Save Compressed Images| LocalFiles
+    ClientApp -->|Analyze Food & Coach Prompts| GeminiAPI
+    GeminiAPI -->|Structured JSON & Responses| ClientApp
+    PurgeEngine -->|Scan Records > 30 Days| LocalDB
+    PurgeEngine -->|Dispatch Backup Archive| UserEmail
+    PurgeEngine -->|Clean Aged Records & Images| LocalDB
 ```
 
-## 🧩 Problem & Solution
-
-**The Problem**: Traditional calorie counting is tedious. Users must manually search for ingredients, estimate portions, and log data into complex spreadsheets. This friction leads to low adherence and abandoned health goals. Most apps lack personalized context, treating every user with generic advice.
-
-**The Solution**: NutriSnap removes the friction through AI-first design.
-1. **Instant Analysis**: A single photo identifies food, estimates portions, and calculates macros using Gemini's advanced vision capabilities.
-2. **Body Metrics**: AI-driven body type and fat percentage estimation from images, providing a more holistic view of health than just weight.
-3. **Conversational Coaching**: A personalized AI coach that understands your specific goals, history, and current progress, offering actionable insights rather than just data.
-4. **Frictionless Logging**: Multiple entry points (Scan, Search, Manual) ensure that logging a meal never takes more than a few seconds.
-
-## 🔄 Detailed Workflow
-
-1. **Onboarding & Profile Setup**: Users set their physical metrics (height, weight) and fitness goals (lose, gain, maintain). The app automatically calculates base calorie limits and macro targets based on these inputs.
-2. **Meal Logging**:
-   - **Scan**: User captures or uploads a food image. Gemini 3.1 Pro analyzes the image, returning a structured JSON with food name, calories, protein, carbs, and fats.
-   - **Search**: Users can search a predefined database for common foods.
-   - **Manual**: Direct input for homemade meals or specific nutritional labels.
-3. **Data Persistence**: All logs are automatically synced to Firestore and aggregated into daily nutritional summaries.
-4. **AI Coaching**: The AI Coach analyzes the user's profile and recent scans. It provides context-aware advice, identifies trends, and suggests follow-up questions to help users understand their habits.
-5. **Real-time Monitoring**: The Home screen visualizes progress against daily calorie and water goals using fluid animations and color-coded indicators.
-6. **Settings & Customization**: Users can refine their macro percentages, set water goals, and manage meal/hydration reminders.
+---
 
 ## 🛠 Tech Stack
 
-- **Framework**: React 18 + Vite + TypeScript
-- **AI**: @google/genai (Gemini 3.1 Pro / Flash)
-- **Database**: Firebase Firestore (NoSQL)
-- **Authentication**: Firebase Auth (Google Provider)
-- **Storage**: Firebase Cloud Storage
-- **Animations**: Framer Motion (motion/react) for layout transitions and liquid effects.
+### Web Application
+- **Framework**: React 19, Vite, TypeScript
+- **Styling**: Tailwind CSS 4 with custom glassmorphism and dark/light theme support
+- **Animations**: Framer Motion (`motion/react`) for layout transitions and fluid liquid animations
+- **Charts & Graphs**: Recharts (`ComposedChart`, `Bar`, `Line`, `ResponsiveContainer`)
 - **Icons**: Lucide React
-- **Charts**: Recharts for historical data visualization.
-- **Styling**: Tailwind CSS 4.0 with custom glassmorphism themes.
+- **Storage**: Client-side IndexedDB & localStorage with canvas-based image compression
+- **PDF & Export**: jsPDF and jsPDF-AutoTable for nutrition report generation
+
+### Flutter Mobile Application (`flutter_app/`)
+- **Framework**: Flutter 3 (Dart SDK >= 3.0.0)
+- **State Management**: Flutter Riverpod (`flutter_riverpod: ^2.4.9`)
+- **Routing**: GoRouter (`go_router: ^13.1.0`)
+- **Charts**: fl_chart (`fl_chart: ^0.65.0`)
+- **Icons**: Lucide Icons (`lucide_icons: ^0.2.0`)
+- **Animations**: Flutter Animate (`flutter_animate: ^4.2.0+1`)
+- **Local Database**: On-device SQLite architecture (`nutrisnap_ai.db`) with tables for `profiles`, `scans`, `daily_summaries`, `chat_messages`, and `purge_audit_logs`
+- **Local File Management**: `LocalFileService` saving images to application document sandbox
+- **AI Integration**: `google_generative_ai: ^0.2.0` (Gemini Pro / Flash)
+
+---
+
+## 📁 Repository Structure
+
+```text
+├── src/                                  # Web Application Source (React 19 + TypeScript)
+│   ├── components/                       # Shared UI components (Layout, Wave, Charts)
+│   ├── contexts/                         # React Contexts (UserContext, Auth, Storage)
+│   ├── lib/                              # Utilities, haptics, and notification helpers
+│   ├── screens/                          # Main screens (Home, Analytics, Scan, Chat, Settings)
+│   ├── services/                         # Gemini AI & on-device storage services
+│   ├── types/                            # TypeScript data interfaces and models
+│   ├── App.tsx                           # Main app entry and navigation
+│   └── main.tsx                          # React DOM entry point
+│
+├── flutter_app/                          # Native Mobile Application (Flutter 3 + Riverpod)
+│   ├── lib/
+│   │   ├── core/
+│   │   │   ├── db/                       # On-device SQLite database engine (local_database.dart)
+│   │   │   ├── services/                 # LocalFileService, StorageService, GeminiService
+│   │   │   ├── utils/                    # DataPurgeManager (30-day purge & email backup)
+│   │   │   ├── models/                   # UserProfile, ScanResult, DailySummary, ChatMessage
+│   │   │   └── theme/                    # AppTheme, Colors, Typography
+│   │   ├── features/
+│   │   │   ├── auth/                     # Local User State & Riverpod Providers
+│   │   │   ├── home/                     # Home Dashboard, Hydration Wave, Today's Macros
+│   │   │   ├── scan/                     # Food Camera, Image Picker & Gemini Analyzer
+│   │   │   ├── chat/                     # AI Coach Chat Screen
+│   │   │   ├── analytics/                # Macro & Calorie Charts (fl_chart)
+│   │   │   └── settings/                 # Profile, Target Sliders, Data Export & Backup
+│   │   └── main.dart                     # Flutter App entry point
+│   └── pubspec.yaml                      # Flutter dependencies and configuration
+│
+├── metadata.json                         # Platform application metadata and permissions
+├── package.json                          # Web dependencies and npm scripts
+└── README.md                             # Project documentation
+```
+
+---
 
 ## 🚀 Getting Started
 
-To run NutriSnap AI locally or in a development environment, follow these steps:
-
 ### Prerequisites
-- **Node.js**: Version 18 or higher.
-- **Firebase Project**: A Firebase project with Authentication (Google, GitHub, Email), Firestore, and Storage enabled.
-- **Gemini API Key**: An API key from [Google AI Studio](https://aistudio.google.com/).
+- **Node.js**: v18.0.0 or higher
+- **Gemini API Key**: Obtain a key from [Google AI Studio](https://aistudio.google.com/)
+- *(Optional for Mobile)*: Flutter SDK 3.x and Android Studio / Xcode
 
-### Installation
+---
+
+### Running the Web Application
+
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
    cd nutrisnap-ai
    ```
+
 2. **Install dependencies**:
    ```bash
    npm install
    ```
+
 3. **Configure Environment Variables**:
-   Copy `.env.example` to `.env` and fill in the required values:
+   Create a `.env` file from `.env.example`:
    ```bash
    cp .env.example .env
    ```
-   - `GEMINI_API_KEY`: Your Gemini API key.
-   - `GITHUB_CLIENT_ID`: Your GitHub OAuth Client ID.
-   - `GITHUB_CLIENT_SECRET`: Your GitHub OAuth Client Secret.
+   Add your Gemini API key:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
 
-4. **Firebase Configuration**:
-   Ensure `firebase-applet-config.json` contains your Firebase project credentials.
-
-5. **Run the development server**:
+4. **Start the development server**:
    ```bash
    npm run dev
    ```
-   The app will be available at `http://localhost:3000`.
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 📁 Project Structure
-
-```text
-├── src/
-│   ├── components/       # Reusable UI components (Layout, Progress, etc.)
-│   ├── contexts/         # React Contexts (UserContext for global state)
-│   ├── lib/              # Utility libraries (Haptics, Notifications, Utils)
-│   ├── screens/          # Main application screens (Home, Analytics, Chat, etc.)
-│   ├── services/         # API and Storage services (Gemini, Firebase)
-│   ├── types/            # TypeScript interfaces and types
-│   ├── App.tsx           # Main application entry and Auth routing
-│   ├── firebase.ts       # Firebase initialization
-│   └── index.css         # Global styles and Tailwind imports
-├── firebase-blueprint.json # Data schema definition
-├── firestore.rules       # Security rules for Firestore
-├── metadata.json         # App metadata and permissions
-└── package.json          # Dependencies and scripts
-```
-
-## 🔑 APIs & Configuration
-
-- **Gemini API**: Accessed via `process.env.GEMINI_API_KEY`. Used for `generateContent` (text/chat) and multimodal image analysis.
-- **Firebase Config**: Loaded from `firebase-applet-config.json`.
-- **Haptics**: Custom implementation for iOS-style tactile feedback on interactions.
-- **Storage Service**: Centralized logic for Firestore CRUD operations and Storage uploads.
+5. **Build for production**:
+   ```bash
+   npm run build
+   ```
 
 ---
-*NutriSnap AI - Precision Nutrition, Simplified.*
+
+### Running the Flutter Mobile Application
+
+1. **Navigate to the Flutter directory**:
+   ```bash
+   cd flutter_app
+   ```
+
+2. **Install Flutter dependencies**:
+   ```bash
+   flutter pub get
+   ```
+
+3. **Run on an emulator or connected device**:
+   ```bash
+   flutter run
+   ```
+
+---
+
+## 🔒 Data Retention & Email Archive Workflow
+
+NutriSnap AI includes an automatic data life-cycle management policy to maintain high performance while ensuring user records are preserved:
+
+1. **Startup / Login Inspection**: When the app starts or a user logs in, the `DataPurgeManager` inspects local database entries.
+2. **Pre-Purge Archive Generation**: All food scans, daily summaries, chat logs, and profile metrics older than 30 days are bundled into a JSON backup archive.
+3. **User Email Delivery**: The compiled archive is dispatched to the user's login email ID.
+4. **Local Purge Execution**:
+   - Outdated records are purged from the SQLite `scans`, `daily_summaries`, and `chat_messages` tables.
+   - Corresponding image files are removed from the local filesystem cache.
+   - An audit record is logged in the `purge_audit_logs` table.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+*NutriSnap AI - Precision Nutrition, 100% Private.*
