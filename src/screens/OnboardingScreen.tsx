@@ -1,11 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, User, Ruler, Weight, Target, Zap, Check, Loader2 } from 'lucide-react';
+import { 
+  ChevronRight, 
+  ChevronLeft, 
+  Sparkles, 
+  User, 
+  Ruler, 
+  Weight, 
+  Target, 
+  Utensils, 
+  GraduationCap, 
+  Activity, 
+  ShieldCheck, 
+  Camera, 
+  Bell, 
+  Flame, 
+  Check, 
+  Loader2 
+} from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { saveUserProfile } from '../services/storageService';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
-import { Goal } from '../types';
+import { Goal, Gender, Lifestyle, ActivityLevel } from '../types';
 
 const OnboardingScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -13,21 +30,98 @@ const OnboardingScreen: React.FC = () => {
   const [step, setStep] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form state
-  const [name, setName] = useState(profile?.displayName || '');
-  const [height, setHeight] = useState(profile?.height || 175);
-  const [weight, setWeight] = useState(profile?.weight || 70);
-  const [goal, setGoal] = useState<Goal>(profile?.goal || 'maintain');
-  const [calorieLimit, setCalorieLimit] = useState(profile?.calorieLimit || 2000);
-  const [proteinGoal, setProteinGoal] = useState(profile?.proteinGoal || 150);
-  const [carbsGoal, setCarbsGoal] = useState(profile?.carbsGoal || 250);
-  const [fatsGoal, setFatsGoal] = useState(profile?.fatsGoal || 70);
+  // Step 2: Personal Info
+  const [name, setName] = useState(profile?.displayName || 'Champion');
+  const [dob, setDob] = useState(profile?.dob || '2002-05-15');
+  const [gender, setGender] = useState<Gender>(profile?.gender || 'male');
 
-  const totalSteps = 5;
+  // Step 3: Body Metrics
+  const [isImperial, setIsImperial] = useState(false);
+  const [heightCm, setHeightCm] = useState(profile?.height || 175);
+  const [weightKg, setWeightKg] = useState(profile?.weight || 70);
+
+  // Step 4: Fitness Goal
+  const [goal, setGoal] = useState<Goal>(profile?.goal || 'maintain');
+
+  // Step 5: Dietary Preferences
+  const [dietaryPrefs, setDietaryPrefs] = useState<string[]>(
+    profile?.dietaryPreferences || ['Vegetarian']
+  );
+  const [allergiesText, setAllergiesText] = useState(
+    profile?.allergies?.join(', ') || ''
+  );
+
+  // Step 6: Lifestyle & MessOS
+  const [lifestyle, setLifestyle] = useState<Lifestyle>(profile?.lifestyle || 'student');
+  const [isHostelUser, setIsHostelUser] = useState(profile?.isHostelUser ?? true);
+  const [budgetRange, setBudgetRange] = useState(profile?.budgetRange || 'moderate');
+
+  // Step 7: Activity Level & TDEE
+  const [activityLevel, setActivityLevel] = useState<ActivityLevel>(
+    profile?.activityLevel || 'moderate'
+  );
+
+  // Step 8: Permissions & Confirmation
+  const [permCamera, setPermCamera] = useState(true);
+  const [permSteps, setPermSteps] = useState(true);
+  const [permNotify, setPermNotify] = useState(true);
+
+  const totalSteps = 8;
+
+  // Auto-calculated fields
+  const calculateAge = (dobString: string): number => {
+    const birthday = new Date(dobString);
+    const ageDifMs = Date.now() - birthday.getTime();
+    const ageDate = new Date(ageDifMs);
+    return Math.abs(ageDate.getUTCFullYear() - 1970) || 22;
+  };
+  const age = calculateAge(dob);
+
+  const heightM = heightCm / 100;
+  const liveBmi = parseFloat((weightKg / (heightM * heightM)).toFixed(1));
+
+  // TDEE and calorie limit auto-calculation
+  const calculateTargets = () => {
+    // Mifflin-St Jeor formula
+    const s = gender === 'female' ? -161 : 5;
+    const bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + s;
+    
+    const multipliers: Record<ActivityLevel, number> = {
+      sedentary: 1.2,
+      lightly_active: 1.375,
+      moderate: 1.55,
+      very_active: 1.725,
+    };
+    const tdee = Math.round(bmr * (multipliers[activityLevel] || 1.55));
+    
+    let targetCalories = tdee;
+    if (goal === 'lose') targetCalories = tdee - 450;
+    if (goal === 'gain') targetCalories = tdee + 400;
+    if (goal === 'endurance') targetCalories = tdee + 200;
+
+    targetCalories = Math.max(1300, Math.min(4200, targetCalories));
+
+    // Balanced Macros
+    const proteinG = Math.round((targetCalories * 0.30) / 4);
+    const carbsG = Math.round((targetCalories * 0.45) / 4);
+    const fatsG = Math.round((targetCalories * 0.25) / 9);
+
+    return { targetCalories, proteinG, carbsG, fatsG, tdee };
+  };
+
+  const { targetCalories, proteinG, carbsG, fatsG } = calculateTargets();
+
+  const toggleDietPref = (pref: string) => {
+    if (dietaryPrefs.includes(pref)) {
+      setDietaryPrefs(dietaryPrefs.filter(p => p !== pref));
+    } else {
+      setDietaryPrefs([...dietaryPrefs, pref]);
+    }
+  };
 
   const handleNext = () => {
+    triggerHaptic(hapticPatterns.light);
     if (step < totalSteps) {
-      triggerHaptic(hapticPatterns.light);
       setStep(step + 1);
     } else {
       handleComplete();
@@ -35,8 +129,8 @@ const OnboardingScreen: React.FC = () => {
   };
 
   const handleBack = () => {
+    triggerHaptic(hapticPatterns.light);
     if (step > 1) {
-      triggerHaptic(hapticPatterns.light);
       setStep(step - 1);
     }
   };
@@ -44,325 +138,597 @@ const OnboardingScreen: React.FC = () => {
   const handleComplete = async () => {
     setIsSaving(true);
     triggerHaptic(hapticPatterns.medium);
-    
+
     try {
-      // Calculate BMI
-      const heightInMeters = height / 100;
-      const bmi = weight / (heightInMeters * heightInMeters);
-      
+      const allergiesList = allergiesText
+        .split(',')
+        .map(a => a.trim())
+        .filter(Boolean);
+
       await saveUserProfile({
         displayName: name,
-        height,
-        weight,
-        bmi: parseFloat(bmi.toFixed(1)),
+        dob,
+        age,
+        gender,
+        height: heightCm,
+        weight: weightKg,
+        bmi: liveBmi,
         goal,
-        calorieLimit,
-        proteinGoal,
-        carbsGoal,
-        fatsGoal,
-        hasCompletedOnboarding: true
+        dietaryPreferences: dietaryPrefs,
+        allergies: allergiesList,
+        lifestyle,
+        isHostelUser,
+        budgetRange,
+        activityLevel,
+        calorieLimit: targetCalories,
+        proteinGoal: proteinG,
+        carbsGoal: carbsG,
+        fatsGoal: fatsG,
+        waterGoal: weightKg * 35, // ~35ml per kg bodyweight
+        hasCompletedOnboarding: true,
       });
 
       await refreshProfile();
       triggerHaptic(hapticPatterns.success);
       navigate('/');
-    } catch (error) {
-      console.error("Failed to save onboarding profile", error);
-      triggerHaptic(hapticPatterns.error);
+    } catch (e) {
+      console.error('Failed to complete onboarding:', e);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const updateSuggestedMacros = (newGoal: Goal, calories: number) => {
-    let p = 150;
-    let c = 250;
-    let f = 70;
-
-    if (newGoal === 'lose') {
-      p = Math.round(weight * 2.2);
-      f = Math.round((calories * 0.25) / 9);
-      c = Math.round((calories - (p * 4) - (f * 9)) / 4);
-    } else if (newGoal === 'gain') {
-      p = Math.round(weight * 2);
-      f = Math.round((calories * 0.25) / 9);
-      c = Math.round((calories - (p * 4) - (f * 9)) / 4);
-    } else {
-      p = Math.round(weight * 1.8);
-      f = Math.round((calories * 0.3) / 9);
-      c = Math.round((calories - (p * 4) - (f * 9)) / 4);
-    }
-
-    setProteinGoal(p);
-    setCarbsGoal(c);
-    setFatsGoal(f);
-  };
-
-  const updateSuggestedCalories = (newGoal: Goal) => {
-    let base = 2000;
-    if (newGoal === 'lose') base = 1700;
-    if (newGoal === 'gain') base = 2500;
-    setCalorieLimit(base);
-    updateSuggestedMacros(newGoal, base);
-  };
-
-  const renderStep = () => {
-    switch (step) {
-      case 1:
-        return (
-          <motion.div 
-            key="step1"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">What should we call you?</h2>
-              <p className="text-gray-500 font-medium">This is how you'll appear in your health dashboard.</p>
-            </div>
-            <div className="relative">
-              <User className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
-                type="text" 
-                placeholder="Your Name" 
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full glass rounded-[24px] py-6 pl-14 pr-6 text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all ios-shadow"
-              />
-            </div>
-          </motion.div>
-        );
-      case 2:
-        return (
-          <motion.div 
-            key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Body Stats</h2>
-              <p className="text-gray-500 font-medium">We use these to calculate your BMI and nutritional needs.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Height (cm)</label>
-                <div className="relative">
-                  <Ruler className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input 
-                    type="number" 
-                    value={height}
-                    onChange={(e) => setHeight(parseInt(e.target.value))}
-                    className="w-full glass rounded-[24px] py-6 pl-14 pr-6 text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all ios-shadow"
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-4">Weight (kg)</label>
-                <div className="relative">
-                  <Weight className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input 
-                    type="number" 
-                    value={weight}
-                    onChange={(e) => setWeight(parseInt(e.target.value))}
-                    className="w-full glass rounded-[24px] py-6 pl-14 pr-6 text-lg font-bold focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all ios-shadow"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        );
-      case 3:
-        return (
-          <motion.div 
-            key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">What's your goal?</h2>
-              <p className="text-gray-500 font-medium">Choose the path that fits your current health journey.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                { id: 'lose', label: 'Lose Weight', description: 'Burn fat and get leaner', icon: Zap, color: 'text-orange-500', bg: 'bg-orange-50' },
-                { id: 'maintain', label: 'Maintain', description: 'Stay healthy and balanced', icon: Target, color: 'text-green-500', bg: 'bg-green-50' },
-                { id: 'gain', label: 'Build Muscle', description: 'Gain strength and mass', icon: Weight, color: 'text-blue-500', bg: 'bg-blue-50' }
-              ].map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    triggerHaptic(hapticPatterns.light);
-                    setGoal(item.id as Goal);
-                    updateSuggestedCalories(item.id as Goal);
-                  }}
-                  className={`p-6 rounded-[32px] border-2 transition-all flex items-center gap-5 text-left ios-shadow ${
-                    goal === item.id 
-                      ? 'border-green-500 bg-green-50/50' 
-                      : 'border-white bg-white/50 hover:border-gray-100'
-                  }`}
-                >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${item.bg} ${item.color} shadow-sm`}>
-                    <item.icon size={24} strokeWidth={2.5} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-lg font-black text-gray-900 tracking-tight">{item.label}</h4>
-                    <p className="text-sm text-gray-500 font-medium">{item.description}</p>
-                    {goal === item.id && (
-                      <motion.p 
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-[10px] font-black text-green-600 mt-2 uppercase tracking-widest"
-                      >
-                        {item.id === 'lose' ? '💡 Focus on whole foods!' : 
-                         item.id === 'gain' ? '💡 Prioritize protein intake!' : 
-                         '💡 Balance is the key to success!'}
-                      </motion.p>
-                    )}
-                  </div>
-                  {goal === item.id && (
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg">
-                      <Check size={16} strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        );
-      case 4:
-        return (
-          <motion.div 
-            key="step4"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">Daily Calorie Target</h2>
-              <p className="text-gray-500 font-medium">Based on your goal, we suggest this daily limit.</p>
-            </div>
-            <div className="glass-card p-10 rounded-[48px] text-center space-y-6 ios-shadow border-white/50">
-              <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Suggested Limit</p>
-                <div className="flex items-center justify-center gap-4">
-                  <input 
-                    type="number" 
-                    value={calorieLimit}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      setCalorieLimit(val);
-                      updateSuggestedMacros(goal, val);
-                    }}
-                    className="w-40 bg-transparent text-6xl font-black text-gray-900 text-center focus:outline-none tracking-tighter"
-                  />
-                  <span className="text-2xl font-black text-gray-300">kcal</span>
-                </div>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  className="h-full bg-green-500"
-                />
-              </div>
-              <p className="text-xs text-gray-400 font-bold leading-relaxed">
-                You can always adjust this later in your settings. This is just a starting point for your journey.
-              </p>
-            </div>
-          </motion.div>
-        );
-      case 5:
-        return (
-          <motion.div 
-            key="step5"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-8"
-          >
-            <div className="space-y-2">
-              <h2 className="text-3xl font-black text-gray-900 tracking-tight">Macronutrient Goals</h2>
-              <p className="text-gray-500 font-medium">We've calculated these based on your calorie target.</p>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                { label: 'Protein', value: proteinGoal, setter: setProteinGoal, color: 'text-blue-500', bg: 'bg-blue-50' },
-                { label: 'Carbs', value: carbsGoal, setter: setCarbsGoal, color: 'text-orange-500', bg: 'bg-orange-50' },
-                { label: 'Fats', value: fatsGoal, setter: setFatsGoal, color: 'text-purple-500', bg: 'bg-purple-50' }
-              ].map((item) => (
-                <div key={item.label} className="glass-card p-6 rounded-[32px] flex items-center justify-between ios-shadow border-white/50">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${item.bg} ${item.color}`}>
-                      <Zap size={20} strokeWidth={2.5} />
-                    </div>
-                    <span className="text-lg font-black text-gray-900 tracking-tight">{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="number" 
-                      value={item.value}
-                      onChange={(e) => item.setter(parseInt(e.target.value))}
-                      className="w-20 bg-transparent text-2xl font-black text-gray-900 text-right focus:outline-none"
-                    />
-                    <span className="text-sm font-bold text-gray-300">g</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-[#F7F8FA] p-8">
-      {/* Progress Bar */}
-      <div className="flex gap-2 mb-12">
-        {Array.from({ length: totalSteps }).map((_, i) => (
-          <div 
-            key={i} 
-            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-              i + 1 <= step ? 'bg-green-500' : 'bg-gray-200'
-            }`}
-          />
-        ))}
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-between max-w-md mx-auto relative overflow-hidden text-gray-800">
+      {/* Top Header with Progress Dots */}
+      <div className="pt-8 px-6 pb-2">
+        <div className="flex items-center justify-between mb-4">
+          {step > 1 ? (
+            <button
+              onClick={handleBack}
+              className="w-10 h-10 rounded-2xl glass flex items-center justify-center text-gray-600 border border-gray-100 hover:bg-white transition-colors"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          ) : (
+            <div className="w-10 h-10" />
+          )}
+
+          <div className="flex gap-1.5 items-center">
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  width: step === i + 1 ? 22 : 6,
+                  backgroundColor: step === i + 1 ? '#059669' : '#e2e8f0',
+                }}
+                className="h-2 rounded-full transition-all"
+              />
+            ))}
+          </div>
+
+          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+            {step}/{totalSteps}
+          </span>
+        </div>
       </div>
 
-      <div className="flex-1">
+      {/* Main Form Content Step-by-Step */}
+      <div className="flex-1 px-6 py-2 flex flex-col justify-center overflow-y-auto">
         <AnimatePresence mode="wait">
-          {renderStep()}
+          {/* STEP 1: Welcome Splash */}
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="text-center space-y-6 py-6"
+            >
+              <div className="w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-[32px] mx-auto flex items-center justify-center text-white shadow-2xl shadow-emerald-500/30">
+                <Sparkles size={44} />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+                  NutriSnap AI v2.0
+                </h1>
+                <p className="text-sm font-semibold text-emerald-600 tracking-wide uppercase">
+                  Local-First • 100% Private Health
+                </p>
+                <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed pt-2">
+                  Snap meals, track calories, monitor body composition, and master campus dining — completely on your device.
+                </p>
+              </div>
+
+              <div className="p-4 glass rounded-2xl border border-emerald-100 text-left space-y-2 max-w-sm mx-auto">
+                <div className="flex items-center gap-2.5 text-xs font-bold text-gray-700">
+                  <ShieldCheck size={16} className="text-emerald-600 shrink-0" />
+                  <span>Zero Cloud Database Tracking</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-xs font-bold text-gray-700">
+                  <Activity size={16} className="text-teal-600 shrink-0" />
+                  <span>On-Device Gemini Multimodal AI</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 2: Personal Info */}
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">About You</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  We customize your metabolic formula based on biological age and sex.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your name"
+                    className="w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Date of Birth
+                    </label>
+                    <span className="text-xs font-bold text-emerald-600">{age} years old</span>
+                  </div>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                    Biological Sex
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {(['male', 'female'] as Gender[]).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGender(g)}
+                        className={`py-3.5 px-4 rounded-2xl text-xs font-bold capitalize border transition-all ${
+                          gender === g
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: Body Metrics */}
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900">Body Metrics</h2>
+                  <p className="text-xs text-gray-500 mt-1">Live BMI & baseline anthropometry.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImperial(!isImperial)}
+                  className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200"
+                >
+                  {isImperial ? 'Metric (cm/kg)' : 'Imperial (ft/lbs)'}
+                </button>
+              </div>
+
+              {/* Live BMI Pill */}
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                    Calculated BMI
+                  </span>
+                  <div className="text-2xl font-black text-emerald-950">{liveBmi}</div>
+                </div>
+                <span className="text-xs font-bold px-3 py-1 bg-white rounded-full text-emerald-700 shadow-sm border border-emerald-100">
+                  {liveBmi < 18.5 ? 'Underweight' : liveBmi < 25 ? 'Normal BMI' : liveBmi < 30 ? 'Overweight' : 'Obese'}
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Height
+                    </label>
+                    <span className="text-xs font-bold text-gray-900">
+                      {isImperial ? `${Math.floor(heightCm / 30.48)}' ${Math.round((heightCm % 30.48) / 2.54)}"` : `${heightCm} cm`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={120}
+                    max={230}
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(Number(e.target.value))}
+                    className="w-full accent-emerald-600 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Weight
+                    </label>
+                    <span className="text-xs font-bold text-gray-900">
+                      {isImperial ? `${Math.round(weightKg * 2.20462)} lbs` : `${weightKg} kg`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={35}
+                    max={180}
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(Number(e.target.value))}
+                    className="w-full accent-emerald-600 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 4: Fitness Goal */}
+          {step === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Your Main Goal</h2>
+                <p className="text-xs text-gray-500 mt-1">Calorie limit & macros will adapt automatically.</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: 'lose', title: 'Lose Weight & Fat', desc: 'Caloric deficit with high protein for satiety', icon: '🔥' },
+                  { id: 'maintain', title: 'Maintain & Tone', desc: 'Sustained energy and body recomposition', icon: '⚖️' },
+                  { id: 'gain', title: 'Build Muscle Mass', desc: 'Clean surplus tailored for progressive overload', icon: '💪' },
+                  { id: 'endurance', title: 'Boost Athletic Stamina', desc: 'Optimal complex carb and recovery fueling', icon: '⚡' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setGoal(item.id as Goal)}
+                    className={`p-4 rounded-2xl text-left border flex items-center gap-4 transition-all ${
+                      goal === item.id
+                        ? 'bg-emerald-50/80 border-emerald-500 ring-2 ring-emerald-500/20 shadow-sm'
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="text-2xl">{item.icon}</div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-gray-900">{item.title}</h4>
+                      <p className="text-xs text-gray-500">{item.desc}</p>
+                    </div>
+                    {goal === item.id && <Check size={18} className="text-emerald-600" />}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 5: Dietary Preferences */}
+          {step === 5 && (
+            <motion.div
+              key="step5"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Dietary Style</h2>
+                <p className="text-xs text-gray-500 mt-1">Personalizes AI meal suggestions and mess swaps.</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'Vegetarian',
+                  'Vegan',
+                  'Eggetarian',
+                  'Non-Vegetarian',
+                  'Jain (No Root Veg)',
+                  'Gluten-Free',
+                  'Keto',
+                  'Diabetic-Friendly',
+                  'High-Protein',
+                ].map((pref) => {
+                  const active = dietaryPrefs.includes(pref);
+                  return (
+                    <button
+                      key={pref}
+                      type="button"
+                      onClick={() => toggleDietPref(pref)}
+                      className={`px-4 py-2.5 rounded-full text-xs font-bold border transition-all ${
+                        active
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pref}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                  Food Allergies or Dislikes
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Peanuts, Shellfish, Lactose (optional)"
+                  value={allergiesText}
+                  onChange={(e) => setAllergiesText(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 6: Lifestyle & MessOS */}
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Daily Lifestyle</h2>
+                <p className="text-xs text-gray-500 mt-1">Helps MessOS and meal recommendations.</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block">
+                  Primary Occupation
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'student', label: 'Student' },
+                    { id: 'professional', label: 'Professional' },
+                    { id: 'athlete', label: 'Athlete' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setLifestyle(item.id as Lifestyle)}
+                      className={`py-3 px-2 rounded-2xl text-xs font-bold border text-center transition-all ${
+                        lifestyle === item.id
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-white text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MessOS Hostel Toggle */}
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                <div className="pr-3">
+                  <h4 className="text-xs font-bold text-emerald-950">Hostel / Campus Mess Diner?</h4>
+                  <p className="text-[11px] text-emerald-800/80">
+                    Enables MessOS smart meal hacks & campus menus
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsHostelUser(!isHostelUser)}
+                  className={`w-12 h-7 rounded-full p-1 transition-colors ${
+                    isHostelUser ? 'bg-emerald-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      isHostelUser ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                  Food Budget Range
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['Pocket-Friendly', 'Moderate', 'Flexible'].map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setBudgetRange(b)}
+                      className={`py-2.5 text-xs font-bold rounded-xl border ${
+                        budgetRange === b
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'bg-white text-gray-700 border-gray-200'
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 7: Activity Level & Plan */}
+          {step === 7 && (
+            <motion.div
+              key="step7"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Activity & TDEE</h2>
+                <p className="text-xs text-gray-500 mt-1">Calculates your calibrated daily intake.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { id: 'sedentary', label: 'Sedentary', sub: 'Desk work, <5k steps' },
+                  { id: 'lightly_active', label: 'Lightly Active', sub: '1-3 workout sessions' },
+                  { id: 'moderate', label: 'Moderate', sub: '3-5 workouts/week' },
+                  { id: 'very_active', label: 'Very Active', sub: 'Intense daily training' },
+                ].map((act) => (
+                  <button
+                    key={act.id}
+                    type="button"
+                    onClick={() => setActivityLevel(act.id as ActivityLevel)}
+                    className={`p-3.5 rounded-2xl text-left border transition-all ${
+                      activityLevel === act.id
+                        ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20'
+                        : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="text-xs font-bold text-gray-900">{act.label}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{act.sub}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Target Nutrition Card */}
+              <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-gray-500 uppercase">Calculated Calorie Target</span>
+                  <span className="text-base font-black text-emerald-600">{targetCalories} kcal</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-gray-100">
+                  <div className="p-2 rounded-xl bg-blue-50">
+                    <span className="text-[10px] font-bold text-blue-700 block">Protein</span>
+                    <span className="text-xs font-black text-blue-900">{proteinG}g</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-amber-50">
+                    <span className="text-[10px] font-bold text-amber-700 block">Carbs</span>
+                    <span className="text-xs font-black text-amber-900">{carbsG}g</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-50">
+                    <span className="text-[10px] font-bold text-rose-700 block">Fats</span>
+                    <span className="text-xs font-black text-rose-900">{fatsG}g</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 8: Permissions & Launch */}
+          {step === 8 && (
+            <motion.div
+              key="step8"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-6"
+            >
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Final Step</h2>
+                <p className="text-xs text-gray-500 mt-1">Configure your device permissions.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-white border border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                      <Camera size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900">Food & Body Camera</h4>
+                      <p className="text-[11px] text-gray-500">Scan meals and evaluate body composition</p>
+                    </div>
+                  </div>
+                  <Check size={18} className="text-emerald-600" />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center">
+                      <Activity size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900">Step & Health Sensor</h4>
+                      <p className="text-[11px] text-gray-500">Auto-tracks steps and active burn</p>
+                    </div>
+                  </div>
+                  <Check size={18} className="text-teal-600" />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-gray-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <Bell size={18} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900">Smart Hydration Alerts</h4>
+                      <p className="text-[11px] text-gray-500">Friendly reminders to stay hydrated</p>
+                    </div>
+                  </div>
+                  <Check size={18} className="text-blue-600" />
+                </div>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-4 mt-12">
-        {step > 1 && (
-          <button 
-            onClick={handleBack}
-            className="w-20 h-20 glass rounded-[32px] flex items-center justify-center text-gray-400 hover:text-gray-900 transition-all ios-shadow active:scale-90"
-          >
-            <ChevronLeft size={24} strokeWidth={2.5} />
-          </button>
-        )}
-        <button 
+      {/* Bottom CTA Button */}
+      <div className="p-6 bg-white/70 backdrop-blur-md border-t border-gray-100">
+        <button
           onClick={handleNext}
           disabled={isSaving}
-          className="flex-1 bg-gray-900 text-white rounded-[32px] font-black text-lg flex items-center justify-center gap-3 shadow-2xl hover:bg-black transition-all active:scale-[0.98] ios-shadow disabled:opacity-50"
+          className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
         >
           {isSaving ? (
-            <Loader2 className="animate-spin" size={24} />
+            <Loader2 size={20} className="animate-spin" />
+          ) : step === totalSteps ? (
+            <>
+              <span>Get Started Now</span>
+              <Check size={18} strokeWidth={2.5} />
+            </>
           ) : (
             <>
-              {step === totalSteps ? 'Complete Profile' : 'Continue'}
-              <ChevronRight size={24} strokeWidth={2.5} />
+              <span>Continue</span>
+              <ChevronRight size={18} strokeWidth={2.5} />
             </>
           )}
         </button>

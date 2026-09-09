@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/enums/app_enums.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/utils/data_purge.dart';
 import 'user_state.dart';
 
 // Stream of current local user
@@ -36,6 +37,16 @@ class UserNotifier extends StateNotifier<UserState> {
 
     final storage = _ref.read(storageServiceProvider);
     storage.setCurrentUid(defaultUser.uid);
+
+    // Run 30-day auto-purge on startup: archives and dispatches data to user's email ID before cleaning
+    try {
+      await DataPurgeManager.runStartupPurge(
+        userEmail: defaultUser.email,
+        userId: defaultUser.uid,
+      );
+    } catch (e) {
+      // Non-blocking background error handling
+    }
 
     var existingProfile = await storage.getUserProfile(defaultUser.uid);
     if (existingProfile == null) {
@@ -80,6 +91,17 @@ class UserNotifier extends StateNotifier<UserState> {
   Future<void> login(LocalUser user) async {
     final storage = _ref.read(storageServiceProvider);
     storage.setCurrentUid(user.uid);
+
+    // Auto-purge items older than 30 days, emailing archive to user's login email ID before cleaning
+    try {
+      await DataPurgeManager.runStartupPurge(
+        userEmail: user.email,
+        userId: user.uid,
+      );
+    } catch (e) {
+      // Non-blocking background error handling
+    }
+
     var p = await storage.getUserProfile(user.uid);
     if (p == null) {
       p = UserProfile(

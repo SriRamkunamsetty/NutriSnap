@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare, Camera, X, FileText } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Loader2, Info, MessageSquare, Lock, ArrowRight, ShieldCheck, Zap, Utensils } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAICoachResponse } from '../services/geminiService';
-import { saveChatMessage, getChatHistory, uploadAIAvatar, getDailySummaryOnce } from '../services/storageService';
+import { saveChatMessage, getChatHistory, getDailySummaryOnce } from '../services/storageService';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { useUser } from '../contexts/UserContext';
 import ReactMarkdown from 'react-markdown';
@@ -15,25 +15,31 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const AIChatScreen: React.FC = () => {
-  const { profile, scans, dailySummary, refreshProfile } = useUser();
+  const { user, profile, scans, dailySummary, refreshProfile, login } = useUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [showAvatarSuccess, setShowAvatarSuccess] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const aiAvatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Auth unlock modal state for guest users
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [signInName, setSignInName] = useState('');
+  const [signInEmail, setSignInEmail] = useState('');
+
+  const isGuest = !user || user.isGuest || user.email.includes('guest');
 
   useEffect(() => {
+    if (isGuest) return;
+
     const unsubscribe = getChatHistory((history) => {
       if (history.length === 0) {
-        // Initial greeting
+        // Initial personalized greeting
         const greeting: ChatMessage = {
           id: 'greeting',
           userId: profile?.uid || 'system',
           role: 'model',
-          text: `Hi ${profile?.displayName?.split(' ')[0] || 'there'}! I'm your NutriSnap AI. How can I help you with your nutrition goals today?`,
+          text: `Hi ${profile?.displayName?.split(' ')[0] || 'there'}! I'm your NutriSnap AI coach. I have your current metrics (${dailySummary?.totalCalories || 0} kcal consumed today, ${dailySummary?.totalWater || 0}ml water). How can I guide your nutrition right now?`,
           timestamp: new Date().toISOString()
         };
         setMessages([greeting]);
@@ -42,7 +48,7 @@ const AIChatScreen: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, [profile]);
+  }, [profile, isGuest, dailySummary]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -51,6 +57,11 @@ const AIChatScreen: React.FC = () => {
   }, [messages, isLoading, suggestions]);
 
   const handleSend = async (textToSend?: string) => {
+    if (isGuest) {
+      setShowSignInModal(true);
+      return;
+    }
+
     const messageText = textToSend || input.trim();
     if (!messageText || isLoading) return;
 
@@ -60,7 +71,6 @@ const AIChatScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
 
     try {
-      // Fetch the absolute latest data from Firestore to ensure context-aware advice
       const [latestProfile, latestSummary] = await Promise.all([
         refreshProfile(),
         getDailySummaryOnce()
@@ -90,183 +100,280 @@ const AIChatScreen: React.FC = () => {
     }
   };
 
-  const handleAIAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleQuickSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = signInName.trim() || 'Health Champion';
+    const email = signInEmail.trim() || 'user@nutrisnap.local';
 
-    setIsUploadingAvatar(true);
-    triggerHaptic(hapticPatterns.medium);
-    
-    try {
-      await uploadAIAvatar(file);
-      await refreshProfile();
-      setShowAvatarSuccess(true);
-      triggerHaptic(hapticPatterns.success);
-      setTimeout(() => setShowAvatarSuccess(false), 3000);
-    } catch (error) {
-      console.error("AI Avatar upload failed", error);
-      triggerHaptic(hapticPatterns.error);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
+    login({
+      uid: `user_${Date.now()}`,
+      displayName: name,
+      email: email,
+      isGuest: false,
+    });
+    setShowSignInModal(false);
+    triggerHaptic(hapticPatterns.success);
   };
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-110px)] bg-transparent">
-      {/* Messages Area */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="glass px-4 py-1.5 rounded-full flex items-center gap-2 border border-white/50 shadow-sm">
-            <Sparkles size={12} className="text-green-500" />
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Powered by Gemini 3.1 Pro</span>
+  // Phase 1 Bug 1: Beautiful Sign-In to Unlock screen for guests
+  if (isGuest) {
+    return (
+      <div className="flex flex-col h-full bg-transparent px-6 py-8 justify-between overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
+              <Bot size={22} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight">AI Nutrition Coach</h2>
+              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Members Only</p>
+            </div>
           </div>
+          <span className="text-xs font-bold text-gray-400 glass px-3 py-1.5 rounded-full border border-gray-100 flex items-center gap-1.5">
+            <Lock size={12} /> Locked
+          </span>
         </div>
-        {messages.map((msg) => (
-          <motion.div 
-            key={msg.id}
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
-          >
-            {/* Avatar */}
-            <div className="flex-shrink-0 mb-6 relative group">
-              {msg.role === 'user' ? (
-                <div className="w-8 h-8 bg-green-500 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden">
-                  {profile?.photoURL ? (
-                    <img src={profile.photoURL} alt="User" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <User size={16} />
-                  )}
-                </div>
-              ) : (
-                <button 
-                  onClick={() => aiAvatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                  className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-sm overflow-hidden relative group"
-                >
-                  {profile?.aiAvatarURL ? (
-                    <img src={profile.aiAvatarURL} alt="AI" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <Bot size={16} />
-                  )}
-                  <div className={cn(
-                    "absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity",
-                    isUploadingAvatar ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                  )}>
-                    {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-                  </div>
-                </button>
-              )}
+
+        {/* Hero Card */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="my-auto py-6"
+        >
+          <div className="glass-card rounded-[32px] p-8 border border-white/60 shadow-xl relative overflow-hidden text-center space-y-6">
+            <div className="w-20 h-20 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-3xl mx-auto flex items-center justify-center text-white shadow-xl shadow-emerald-500/20">
+              <Sparkles size={36} />
             </div>
 
-            <div className={`flex flex-col max-w-[75%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`px-5 py-3.5 rounded-[24px] text-sm leading-relaxed ios-shadow ${
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+                Sign In to Unlock AI Coach
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed max-w-sm mx-auto">
+                Get real-time answers calibrated to your current calories, protein deficit, water intake, and personal food logs.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-left pt-2">
+              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/70 border border-emerald-100/50">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Zap size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800">Dynamic Daily Macro Guidance</h4>
+                  <p className="text-[11px] text-gray-500">Know what to eat based on exact remaining calories</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/70 border border-emerald-100/50">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
+                  <Utensils size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800">MessOS & Dining Out Hacks</h4>
+                  <p className="text-[11px] text-gray-500">Tailored suggestions for hostel food, cafes & regional diets</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-white/70 border border-emerald-100/50">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-800">100% On-Device & Private</h4>
+                  <p className="text-[11px] text-gray-500">Zero cloud database tracking, local encrypted history</p>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSignInModal(true)}
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all"
+            >
+              <span>Sign In / Create Account</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Quick Modal */}
+        <AnimatePresence>
+          {showSignInModal && (
+            <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 30 }}
+                className="bg-white rounded-[32px] w-full max-w-md p-6 shadow-2xl border border-gray-100"
+              >
+                <div className="flex justify-between items-center pb-4 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Sign In to NutriSnap</h3>
+                    <p className="text-xs text-gray-500">Unlocks AI Coach & personal health sync</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSignInModal(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleQuickSignIn} className="space-y-4 pt-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                      Your Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Alex Miller"
+                      value={signInName}
+                      onChange={(e) => setSignInName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block mb-1.5">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="alex@example.com"
+                      value={signInEmail}
+                      onChange={(e) => setSignInEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+                    >
+                      <span>Unlock AI Coach</span>
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100/50 bg-white/40 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600">
+            <Bot size={22} strokeWidth={2.5} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-gray-900 tracking-tight">NutriSnap AI Coach</h2>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+            <p className="text-[11px] font-semibold text-emerald-600">Real-Time On-Device Guidance</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-gray-500 glass px-3 py-1 rounded-full border border-gray-100">
+            {profile?.calorieLimit ? `${dailySummary?.totalCalories || 0} / ${profile.calorieLimit} kcal` : 'Calibrated'}
+          </span>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+      >
+        {messages.map((msg) => (
+          <motion.div
+            key={msg.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            {msg.role === 'model' && (
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 self-end">
+                <Bot size={18} />
+              </div>
+            )}
+            <div className={`max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+              <div className={`p-4 rounded-3xl text-sm ${
                 msg.role === 'user' 
-                  ? 'bg-green-600 text-white rounded-br-none font-medium' 
-                  : 'glass-card text-gray-800 rounded-bl-none border-white/50'
+                  ? 'bg-emerald-600 text-white rounded-br-none shadow-md shadow-emerald-600/10' 
+                  : 'bg-white text-gray-800 rounded-bl-none shadow-sm border border-gray-100'
               }`}>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm max-w-none text-current">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-2 px-2">
+              <span className="text-[10px] font-semibold text-gray-400 mt-1 px-1">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
           </motion.div>
         ))}
-        
+
         {isLoading && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start items-end gap-3"
-          >
-            <div className="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center text-white shadow-sm overflow-hidden">
-              {profile?.aiAvatarURL ? (
-                <img src={profile.aiAvatarURL} alt="AI" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <Bot size={16} />
-              )}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Bot size={18} />
             </div>
-            <div className="glass-card px-5 py-4 rounded-[24px] rounded-bl-none border-white/50 flex gap-1.5 ios-shadow">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce" />
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+            <div className="px-5 py-3 rounded-2xl bg-white border border-gray-100 flex items-center gap-1.5">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.4s]" />
             </div>
           </motion.div>
         )}
 
-        {/* Suggestions */}
+        {/* Suggestion Chips */}
         {!isLoading && suggestions.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap gap-2 pt-2"
-          >
-            {suggestions.map((suggestion, idx) => (
+          <div className="flex flex-wrap gap-2 pt-2">
+            {suggestions.map((s, idx) => (
               <button
                 key={idx}
-                onClick={() => handleSend(suggestion)}
-                className="px-4 py-2 glass hover:bg-white/60 rounded-full text-xs font-bold text-green-600 border border-green-100 ios-shadow ios-tap flex items-center gap-2"
+                onClick={() => handleSend(s)}
+                className="px-3.5 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200/60 flex items-center gap-1.5 transition-colors"
               >
                 <MessageSquare size={12} />
-                {suggestion}
+                <span>{s}</span>
               </button>
             ))}
-          </motion.div>
+          </div>
         )}
       </div>
 
-      {/* Avatar Success Toast */}
-      <AnimatePresence>
-        {showAvatarSuccess && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-24 left-6 right-6 z-[120]"
-          >
-            <div className="bg-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-purple-500/50 backdrop-blur-xl">
-              <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-                <Bot size={18} />
-              </div>
-              <p className="text-sm font-bold">AI Avatar updated successfully</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Input Area */}
-      <div className="px-6 pb-4 pt-2">
-        <input 
-          type="file" 
-          ref={aiAvatarInputRef} 
-          onChange={handleAIAvatarChange} 
-          accept="image/*" 
-          className="hidden" 
-        />
+      {/* Input */}
+      <div className="p-4 bg-white/60 backdrop-blur-md border-t border-gray-100">
         <form 
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          className="relative flex items-center"
+          className="flex items-center gap-2"
         >
-          <input 
-            type="text" 
-            placeholder="Ask NutriSnap AI..." 
+          <input
+            type="text"
+            placeholder="Ask anything about meals, macros, or mess food..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
-            className="w-full glass rounded-[28px] py-4 pl-6 pr-14 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-500/20 transition-all ios-shadow placeholder:text-gray-400"
+            className="flex-1 px-5 py-3.5 rounded-2xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm font-medium"
           />
-          <button 
+          <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="absolute right-2 w-11 h-11 bg-green-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-700 disabled:bg-gray-200 disabled:shadow-none transition-all"
+            className="w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 text-white flex items-center justify-center shadow-md transition-all shrink-0"
           >
-            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} strokeWidth={2.5} />}
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} strokeWidth={2.5} />}
           </button>
         </form>
       </div>

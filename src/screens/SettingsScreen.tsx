@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Scale, Ruler, Target, Flame, Save, LogOut, ChevronRight, Info, Shield, Bell, Activity, Camera, Loader2, Sparkles, Beef, Wheat, Droplets, Plus, X, Trash2, Bot, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { saveUserProfile, uploadProfileImage, clearChatHistory, uploadBodyImage, saveScanResult, exportLocalData, importLocalData, clearAllLocalData } from '../services/storageService';
+import { saveUserProfile, uploadProfileImage, clearChatHistory, uploadBodyImage, saveScanResult, exportLocalData, importLocalData, clearAllLocalData, getActiveLocalUser, getUserProfile } from '../services/storageService';
 import { analyzeBodyImage } from '../services/geminiService';
 import { generateHealthReport } from '../services/pdfService';
 import { UserProfile, Goal, BodyType, Reminder } from '../types';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { useUser } from '../contexts/UserContext';
 import { requestNotificationPermission } from '../lib/notifications';
+import { BodyScanModal } from '../components/BodyScanModal';
 
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -30,6 +31,7 @@ const SettingsScreen: React.FC = () => {
   const [reportError, setReportError] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isBodyScanModalOpen, setIsBodyScanModalOpen] = useState(false);
   const bodyInputRef = useRef<HTMLInputElement>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
@@ -48,10 +50,12 @@ const SettingsScreen: React.FC = () => {
     fatsPct: 30,
     displayName: user?.displayName || 'User',
     photoURL: user?.photoURL || '',
-    aiAvatarURL: '',
     bmi: 22.9,
     bodyType: 'unknown' as BodyType,
     fatEstimate: 0,
+    muscleMass: 0,
+    fitnessLevel: 'Intermediate Fit',
+    bodyScanURL: '',
     waterGoal: 2500,
     reminders: [] as Reminder[]
   });
@@ -82,11 +86,13 @@ const SettingsScreen: React.FC = () => {
         carbsPct: cPct,
         fatsPct: fPct,
         displayName: profile.displayName || user?.displayName || 'User',
-        photoURL: profile.photoURL || user?.photoURL || '',
-        aiAvatarURL: profile.aiAvatarURL || '',
+        photoURL: profile.photoURL || profile.localPhotoPath || user?.photoURL || '',
         bmi: profile.bmi || 22.9,
         bodyType: profile.bodyType || 'unknown',
         fatEstimate: profile.fatEstimate || 0,
+        muscleMass: profile.muscleMass || 0,
+        fitnessLevel: profile.fitnessLevel || 'Intermediate Fit',
+        bodyScanURL: profile.bodyScanURL || profile.localBodyScanPath || '',
         waterGoal: profile.waterGoal || 2500,
         reminders: profile.reminders || []
       };
@@ -94,6 +100,35 @@ const SettingsScreen: React.FC = () => {
       setInitialData(data);
     }
   }, [profile]);
+
+  // Reactive listener for local storage profile changes
+  useEffect(() => {
+    const handleUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.entity === 'profile' || detail?.entity === 'all') {
+        const active = getActiveLocalUser();
+        getUserProfile(active.uid).then((fresh) => {
+          if (fresh) {
+            setFormData(prev => ({
+              ...prev,
+              displayName: fresh.displayName || prev.displayName,
+              photoURL: fresh.photoURL || fresh.localPhotoPath || prev.photoURL,
+              bodyType: fresh.bodyType || prev.bodyType,
+              fatEstimate: fresh.fatEstimate ?? prev.fatEstimate,
+              muscleMass: fresh.muscleMass ?? prev.muscleMass,
+              fitnessLevel: fresh.fitnessLevel || prev.fitnessLevel,
+              bodyScanURL: fresh.bodyScanURL || fresh.localBodyScanPath || prev.bodyScanURL,
+              height: fresh.height || prev.height,
+              weight: fresh.weight || prev.weight,
+              bmi: fresh.bmi || prev.bmi,
+            }));
+          }
+        });
+      }
+    };
+    window.addEventListener('nutrisnap_local_storage_updated', handleUpdate);
+    return () => window.removeEventListener('nutrisnap_local_storage_updated', handleUpdate);
+  }, []);
 
   useEffect(() => {
     const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialData);
@@ -367,7 +402,8 @@ const SettingsScreen: React.FC = () => {
       const url = await uploadProfileImage(file);
       setFormData(prev => ({ ...prev, photoURL: url }));
       // Update global context for instant reactivity in other screens
-      await updateProfile({ photoURL: url });
+      await updateProfile({ photoURL: url, localPhotoPath: url });
+      await refreshProfile();
       setIsUploadingProfile(false);
       triggerHaptic(hapticPatterns.success);
     } catch (error) {
@@ -456,15 +492,15 @@ const SettingsScreen: React.FC = () => {
               disabled={isUploadingProfile}
               className="w-24 h-24 bg-green-500 rounded-[32px] flex items-center justify-center text-white text-3xl font-bold shadow-2xl shadow-green-500/30 ios-shadow group-hover:scale-105 transition-transform overflow-hidden relative"
             >
-              {formData.photoURL ? (
+              {(formData.photoURL || profile?.photoURL || profile?.localPhotoPath || user?.photoURL) ? (
                 <img 
-                  src={formData.photoURL} 
+                  src={formData.photoURL || profile?.photoURL || profile?.localPhotoPath || user?.photoURL} 
                   alt="Profile" 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                formData.displayName.charAt(0)
+                (formData.displayName || profile?.displayName || 'User').charAt(0).toUpperCase()
               )}
               
               {isUploadingProfile && (
@@ -611,8 +647,50 @@ const SettingsScreen: React.FC = () => {
           </div>
         </div>
 
+        {/* Uploaded Body Scan Pic & Metrics Preview */}
+        {(formData.bodyScanURL || profile?.bodyScanURL || profile?.localBodyScanPath) && (
+          <div className="relative rounded-3xl overflow-hidden border border-purple-200/70 bg-gradient-to-br from-purple-50/70 to-indigo-50/40 p-4 flex items-center gap-3.5 z-10">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-purple-100 shrink-0 border border-white shadow-sm relative group">
+              <img
+                src={formData.bodyScanURL || profile?.bodyScanURL || profile?.localBodyScanPath}
+                alt="Active Body Scan"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1 text-purple-600 mb-0.5">
+                <Sparkles size={13} className="shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Active Body Scan</span>
+              </div>
+              <p className="text-xs font-bold text-gray-900 truncate capitalize">
+                {formData.bodyType !== 'unknown' ? formData.bodyType : (profile?.bodyType || 'Scanned Somatotype')}
+              </p>
+              <div className="flex items-center gap-3 text-[11px] text-gray-600 mt-1">
+                <span>Fat: <strong className="text-purple-700 font-bold">{formData.fatEstimate || profile?.fatEstimate || 0}%</strong></span>
+                {(formData.muscleMass || profile?.muscleMass) ? (
+                  <span>Lean: <strong className="text-gray-800 font-bold">~{formData.muscleMass || profile?.muscleMass}kg</strong></span>
+                ) : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic(hapticPatterns.light);
+                setIsBodyScanModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white text-purple-600 text-xs font-bold shadow-sm border border-purple-100 hover:bg-purple-50 transition-colors shrink-0"
+            >
+              Re-Scan
+            </button>
+          </div>
+        )}
+
         <button 
-          onClick={() => bodyInputRef.current?.click()}
+          onClick={() => {
+            triggerHaptic(hapticPatterns.medium);
+            setIsBodyScanModalOpen(true);
+          }}
           disabled={isAnalyzing}
           className="w-full py-5 glass hover:bg-white/60 rounded-[24px] text-sm font-bold transition-all flex items-center justify-center gap-3 border border-white/50 ios-shadow group relative overflow-hidden"
         >
@@ -630,22 +708,16 @@ const SettingsScreen: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {isAnalyzing ? (
-            <Loader2 size={20} className="animate-spin text-green-600" />
-          ) : (
-            <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">
-              <Sparkles size={18} strokeWidth={2.5} />
-            </div>
-          )}
+          <div className="w-8 h-8 bg-purple-500/10 rounded-xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+            <Sparkles size={18} strokeWidth={2.5} />
+          </div>
           <div className="flex flex-col items-start">
-            <span className="tracking-tight leading-none">
-              {isAnalyzing ? 'AI is Analyzing Body...' : 'AI Body Scan'}
+            <span className="tracking-tight leading-none text-gray-900">
+              AI Body Scan
             </span>
-            {!isAnalyzing && (
-              <span className="text-[8px] font-black uppercase tracking-widest text-green-500/60 mt-1">
-                Powered by Gemini 3.1 Pro
-              </span>
-            )}
+            <span className="text-[8px] font-black uppercase tracking-widest text-purple-600/70 mt-1">
+              Two-Layer ML + Gemini 3.8 Flash
+            </span>
           </div>
         </button>
         <input type="file" ref={bodyInputRef} onChange={handleBodyImageChange} accept="image/*" className="hidden" />
@@ -1033,9 +1105,9 @@ const SettingsScreen: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
           <button 
             type="button"
-            onClick={() => {
+            onClick={async () => {
               triggerHaptic(hapticPatterns.light);
-              const data = exportLocalData();
+              const data = await exportLocalData();
               const blob = new Blob([data], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -1239,6 +1311,12 @@ const SettingsScreen: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Body Scan Modal */}
+      <BodyScanModal 
+        isOpen={isBodyScanModalOpen} 
+        onClose={() => setIsBodyScanModalOpen(false)} 
+      />
 
     </div>
   );

@@ -98,16 +98,6 @@ class StorageService {
     return dataUri;
   }
 
-  Future<String> uploadAIAvatar(File file, {Function(double)? onProgress}) async {
-    onProgress?.call(0.5);
-    final dataUri = await _fileToBase64DataUri(file);
-    onProgress?.call(1.0);
-    if (_cachedProfile != null) {
-      _cachedProfile = _cachedProfile!.copyWith(aiAvatarURL: dataUri);
-    }
-    return dataUri;
-  }
-
   Future<String> uploadBodyImage(File file, {Function(double)? onProgress}) async {
     onProgress?.call(0.5);
     final dataUri = await _fileToBase64DataUri(file);

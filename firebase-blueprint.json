@@ -16,7 +16,6 @@
         "fatEstimate": { "type": "number" },
         "goal": { "type": "string", "enum": ["lose", "maintain", "gain"] },
         "calorieLimit": { "type": "number" },
-        "aiAvatarURL": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "lastLoginAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }

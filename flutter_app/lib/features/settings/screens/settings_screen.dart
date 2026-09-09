@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -225,7 +226,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     setState(() => _isUploadingProfile = true);
     HapticFeedback.mediumImpact();
-    UIFeedback.showInfo(context, 'Uploading profile image...');
+    UIFeedback.showInfo(context, 'Saving profile photo...');
 
     try {
       final storageService = ref.read(storageServiceProvider);
@@ -233,15 +234,75 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       
       final currentProfile = ref.read(userNotifierProvider).profile;
       if (currentProfile != null) {
-        await ref.read(userNotifierProvider.notifier).updateProfile(currentProfile.copyWith(photoURL: url));
+        final updated = currentProfile.copyWith(photoURL: url);
+        _localProfileCache = updated;
+        await ref.read(userNotifierProvider.notifier).updateProfile(updated);
       }
       
-      UIFeedback.showSuccess(context, 'Profile image updated!');
-    } catch (_) {
-      UIFeedback.showError(context, 'Failed to upload image.');
+      UIFeedback.showSuccess(context, 'Profile photo updated & stored!');
+    } catch (e) {
+      debugPrint('[SettingsScreen] Profile photo upload failed: $e');
+      UIFeedback.showError(context, 'Failed to save profile photo.');
     } finally {
       if (mounted) setState(() => _isUploadingProfile = false);
     }
+  }
+
+  Widget _buildAvatarImage(String? photoURL, String? displayName) {
+    if (photoURL == null || photoURL.trim().isEmpty) {
+      return _buildFallbackAvatar(displayName);
+    }
+
+    final trimmed = photoURL.trim();
+
+    // 1. Base64 Data URI
+    if (trimmed.startsWith('data:image')) {
+      try {
+        final commaIndex = trimmed.indexOf(',');
+        final base64Part = commaIndex != -1 ? trimmed.substring(commaIndex + 1) : trimmed;
+        final bytes = base64Decode(base64Part);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => _buildFallbackAvatar(displayName),
+        );
+      } catch (_) {}
+    }
+
+    // 2. HTTP/HTTPS Network URL
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return Image.network(
+        trimmed,
+        fit: BoxFit.cover,
+        errorBuilder: (c, e, s) => _buildFallbackAvatar(displayName),
+      );
+    }
+
+    // 3. Local File Path on Device
+    try {
+      final file = File(trimmed);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (c, e, s) => _buildFallbackAvatar(displayName),
+        );
+      }
+    } catch (_) {}
+
+    return _buildFallbackAvatar(displayName);
+  }
+
+  Widget _buildFallbackAvatar(String? displayName) {
+    final initial = (displayName != null && displayName.trim().isNotEmpty)
+        ? displayName.trim().substring(0, 1).toUpperCase()
+        : 'U';
+    return Center(
+      child: Text(
+        initial,
+        style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+    );
   }
 
   Future<void> _handleBodyImageChange() async {
@@ -424,10 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  if (profile?.photoURL != null && profile!.photoURL.isNotEmpty)
-                                    Image.network(profile.photoURL, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Center(child: Icon(LucideIcons.user, color: Colors.white, size: 40)))
-                                  else
-                                    Center(child: Text((profile?.displayName ?? 'U').substring(0, 1).toUpperCase(), style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.white))),
+                                  _buildAvatarImage(profile?.photoURL, profile?.displayName),
                                   if (_isUploadingProfile)
                                     Container(color: Colors.black45, child: const Center(child: CircularProgressIndicator(color: Colors.white))),
                                   Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)), child: Icon(LucideIcons.camera, size: 12, color: Colors.green.shade600)))

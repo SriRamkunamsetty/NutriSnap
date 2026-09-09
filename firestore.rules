@@ -82,7 +82,7 @@ service cloud.firestore {
       let allowedFields = [
         'uid', 'email', 'displayName', 'photoURL', 'height', 'weight', 
         'bmi', 'bodyType', 'fatEstimate', 'goal', 'calorieLimit', 
-        'aiAvatarURL', 'createdAt', 'lastLoginAt', 'updatedAt', 'hasCompletedOnboarding',
+        'createdAt', 'lastLoginAt', 'updatedAt', 'hasCompletedOnboarding',
         'waterGoal', 'proteinGoal', 'carbsGoal', 'fatsGoal', 'reminders', 'theme'
       ];
       return data.keys().hasAll(requiredFields) &&

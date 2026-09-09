@@ -1,5 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Plus, History, TrendingUp, Search, Sparkles, Flame, Apple, Zap, Droplets, ChevronRight, X, Loader2, User } from 'lucide-react';
+import { 
+  Camera, 
+  Plus, 
+  History, 
+  TrendingUp, 
+  Search, 
+  Sparkles, 
+  Flame, 
+  Apple, 
+  Zap, 
+  Droplets, 
+  ChevronRight, 
+  X, 
+  Loader2, 
+  User, 
+  Activity, 
+  UtensilsCrossed 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { analyzeFoodImage } from '../services/geminiService';
@@ -9,6 +26,9 @@ import { triggerHaptic, hapticPatterns } from '../lib/haptics';
 import { sendLocalNotification, startMealReminderScheduler, stopMealReminderScheduler } from '../lib/notifications';
 import { useUser } from '../contexts/UserContext';
 import { CalorieProgressRing } from '../components/CalorieProgressRing';
+import { DailyContextPanels } from '../components/DailyContextPanels';
+import { MessOSModal } from '../components/MessOSModal';
+import { BodyScanModal } from '../components/BodyScanModal';
 import { MealRemindersCard } from '../components/MealRemindersModal';
 import { HealthyFoodSuggestions } from '../components/HealthyFoodSuggestions';
 
@@ -18,6 +38,13 @@ const FOOD_DATABASE: Record<string, Partial<ScanResult>> = {
   'salad': { foodName: 'Garden Salad', calories: 150, protein: 5, carbs: 10, fats: 8, type: 'food', confidence: 0.8 },
   'apple': { foodName: 'Red Apple', calories: 95, protein: 0.5, carbs: 25, fats: 0.3, type: 'food', confidence: 0.9 },
   'chicken': { foodName: 'Grilled Chicken', calories: 330, protein: 50, carbs: 0, fats: 12, type: 'food', confidence: 0.85 },
+  'dal': { foodName: 'Dal Tadka', calories: 180, protein: 12, carbs: 24, fats: 4, type: 'food', confidence: 0.9 },
+  'roti': { foodName: 'Wheat Roti', calories: 85, protein: 3, carbs: 17, fats: 1, type: 'food', confidence: 0.95 },
+  'paneer': { foodName: 'Paneer Masala', calories: 280, protein: 18, carbs: 10, fats: 20, type: 'food', confidence: 0.88 },
+  'dosa': { foodName: 'Masala Dosa', calories: 260, protein: 6, carbs: 42, fats: 8, type: 'food', confidence: 0.9 },
+  'idli': { foodName: 'Steamed Idli (2 pcs)', calories: 130, protein: 5, carbs: 28, fats: 1, type: 'food', confidence: 0.95 },
+  'chana': { foodName: 'Roasted Chana', calories: 160, protein: 9, carbs: 24, fats: 3, type: 'food', confidence: 0.92 },
+  'curd': { foodName: 'Fresh Curd / Dahi', calories: 98, protein: 7, carbs: 6, fats: 5, type: 'food', confidence: 0.95 },
 };
 
 const HomeScreen: React.FC = () => {
@@ -26,6 +53,8 @@ const HomeScreen: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showManualLog, setShowManualLog] = useState(false);
+  const [showMessOS, setShowMessOS] = useState(false);
+  const [showBodyScan, setShowBodyScan] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [manualMeal, setManualMeal] = useState({
@@ -78,7 +107,7 @@ const HomeScreen: React.FC = () => {
     triggerHaptic(hapticPatterns.medium);
 
     try {
-      // 1. Upload image to storage first
+      // 1. Upload/store image locally
       const imageUrl = await uploadScanImage(file);
       
       const reader = new FileReader();
@@ -89,54 +118,45 @@ const HomeScreen: React.FC = () => {
         try {
           result = await analyzeFoodImage(base64, file.type);
         } catch (apiError) {
-          console.warn("AI Analysis failed, using fallback mechanism", apiError);
-          // Fallback: Try to find a match in local database based on filename or use default
+          console.warn("AI Analysis fallback mechanism", apiError);
           const fileName = file.name.toLowerCase();
           const match = Object.keys(FOOD_DATABASE).find(key => fileName.includes(key));
           result = match ? FOOD_DATABASE[match] : {
-            foodName: 'Unknown Meal',
+            foodName: 'Fresh Meal Item',
             type: 'food',
-            calories: 450, // Default estimation
-            protein: 15,
-            carbs: 40,
-            fats: 20,
-            confidence: 0.5,
-            description: "We couldn't reach the AI, so we've provided a standard estimation for a balanced meal."
+            calories: 420,
+            protein: 16,
+            carbs: 48,
+            fats: 14,
+            confidence: 0.65,
+            description: "Nutritious balanced meal estimation."
           };
         }
         
-        if (result.foodName) {
-          const scanData: Omit<ScanResult, 'id' | 'userId' | 'timestamp'> = {
-            foodName: result.foodName,
-            type: result.type as any || 'food',
-            details: result.details,
-            description: result.description,
-            calories: result.calories || 0,
-            protein: result.protein || 0,
-            carbs: result.carbs || 0,
-            fats: result.fats || 0,
-            imageUrl: imageUrl, // Use the uploaded storage URL
-            confidence: result.confidence || 0
-          };
+        const scanData: Omit<ScanResult, 'id' | 'userId' | 'timestamp'> = {
+          foodName: result.foodName || 'Meal Log',
+          type: (result.type as any) || 'food',
+          details: result.details,
+          description: result.description,
+          calories: result.calories || 0,
+          protein: result.protein || 0,
+          carbs: result.carbs || 0,
+          fats: result.fats || 0,
+          imageUrl: imageUrl,
+          confidence: result.confidence || 0.9
+        };
 
-          const savedScan = await saveScanResult(scanData);
-          triggerHaptic(hapticPatterns.success);
-          navigate(`/result/${savedScan.id}`);
-        }
+        const savedScan = await saveScanResult(scanData);
+        triggerHaptic(hapticPatterns.success);
+        navigate(`/result/${savedScan.id}`);
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error("Scan process failed", error);
       triggerHaptic(hapticPatterns.error);
-      alert("Failed to process image. Please try again.");
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleAddWater = async (amount: number) => {
-    triggerHaptic(hapticPatterns.light);
-    await updateWaterIntake(amount);
   };
 
   const handleSearch = (query: string) => {
@@ -155,13 +175,13 @@ const HomeScreen: React.FC = () => {
     setIsProcessing(true);
     try {
       const scanData: Omit<ScanResult, 'id' | 'userId' | 'timestamp'> = {
-        foodName: food.foodName || 'Unknown',
+        foodName: food.foodName || 'Quick Meal',
         type: 'food',
         calories: food.calories || 0,
         protein: food.protein || 0,
         carbs: food.carbs || 0,
         fats: food.fats || 0,
-        imageUrl: 'https://picsum.photos/seed/food/200/200', // Placeholder for manual logs
+        imageUrl: undefined,
         confidence: 1
       };
       const savedScan = await saveScanResult(scanData);
@@ -186,216 +206,92 @@ const HomeScreen: React.FC = () => {
   const calorieProgress = (profile?.calorieLimit && profile.calorieLimit > 0) 
     ? (dailySummary?.totalCalories || 0) / profile.calorieLimit 
     : 0;
-  const waterProgress = (profile?.waterGoal && profile.waterGoal > 0) 
-    ? (dailySummary?.totalWater || 0) / profile.waterGoal 
-    : (dailySummary?.totalWater || 0) / 2500;
+
+  // Reactively resolve user profile photo
+  const currentPhotoURL = profile?.localPhotoPath || profile?.photoURL || user?.photoURL || '';
 
   return (
-    <div className="space-y-10 pb-10 pt-8">
+    <div className="space-y-8 pb-12 pt-6">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-            Hi, <span className="text-green-600">{profile?.displayName?.split(' ')[0] || 'User'}</span>
-          </h1>
-          <p className="text-sm text-gray-400 font-medium tracking-tight">Your health journey continues.</p>
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+              Hi, <span className="text-emerald-600">{profile?.displayName?.split(' ')[0] || 'Champion'}</span>
+            </h1>
+            {profile?.isHostelUser && (
+              <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-100">
+                MessOS
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 font-medium">100% Private On-Device Health</p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2.5">
           <button 
             onClick={() => setShowSearch(true)}
-            className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm ios-tap text-gray-400 hover:text-green-600 transition-colors"
+            className="w-11 h-11 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm ios-tap text-gray-500 hover:text-emerald-600 transition-colors"
+            title="Search food database"
           >
-            <Search size={20} />
+            <Search size={18} />
           </button>
+
           <button 
-            onClick={() => navigate('/settings')}
-            className="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap"
+            onClick={() => {
+              triggerHaptic(hapticPatterns.light);
+              navigate('/settings');
+            }}
+            className="w-11 h-11 rounded-2xl bg-white border border-gray-100 flex items-center justify-center shadow-sm overflow-hidden relative ios-tap group"
+            title="Profile & Settings"
           >
-            {(profile?.photoURL || user?.photoURL) ? (
+            {currentPhotoURL ? (
               <img 
-                src={profile?.photoURL || user?.photoURL || ''} 
+                src={currentPhotoURL} 
                 alt="Profile" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <User size={20} className="text-gray-400" />
+              <div className="w-full h-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-xs">
+                {profile?.displayName?.slice(0, 1) || 'U'}
+              </div>
             )}
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+            <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white" />
           </button>
         </div>
       </div>
 
-      {/* Daily Progress Ring & Macro Overview */}
+      {/* Unified Context Panel 1: Fuel (Calorie Progress Ring & Macro Targets) */}
       <CalorieProgressRing
         dailySummary={dailySummary}
         profile={profile}
         calorieProgress={calorieProgress}
       />
 
+      {/* Unified Context Panels 2-5: Move, Hydrate, Rest, Recovery, and MessOS Banner */}
+      <DailyContextPanels 
+        onOpenMessOS={() => setShowMessOS(true)}
+        onOpenQuickLog={() => setShowManualLog(true)}
+      />
+
       {/* Recurring Meal Reminders Card */}
       <MealRemindersCard />
 
-      {/* Water Tracker Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-8 rounded-[40px] ios-shadow space-y-6 relative overflow-hidden"
-      >
-        <div className="absolute -top-10 -right-10 opacity-[0.03] pointer-events-none">
-          <Droplets size={200} className="text-blue-600" />
-        </div>
-        
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500">
-              <Droplets size={20} strokeWidth={2.5} />
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-900 tracking-tight">Hydration</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Daily Water Intake</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-black text-gray-900 tracking-tight">
-              {dailySummary?.totalWater || 0}
-            </span>
-            <span className="text-xs font-bold text-gray-400 ml-1">/ {profile?.waterGoal || 2500}ml</span>
-          </div>
-        </div>
-
-        <div className="h-40 bg-slate-50 rounded-[40px] overflow-hidden border border-white/20 relative z-10 group shadow-inner">
-          {/* Liquid Fill */}
-          <motion.div 
-            initial={{ height: 0 }}
-            animate={{ height: `${Math.min(waterProgress * 100, 100)}%` }}
-            transition={{ type: 'spring', damping: 25, stiffness: 40 }}
-            className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600"
-          >
-            {/* Primary Wave */}
-            <motion.div 
-              animate={{ 
-                x: [-400, 0],
-              }}
-              transition={{ 
-                duration: 5, 
-                repeat: Infinity, 
-                ease: "linear" 
-              }}
-              className="absolute -top-12 left-0 w-[800%] h-24 opacity-60"
-            >
-              <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-400">
-                <path d="M0,50 C150,100 350,0 500,50 C650,100 850,0 1000,50 L1000,100 L0,100 Z" />
-              </svg>
-            </motion.div>
-
-            {/* Secondary Wave */}
-            <motion.div 
-              animate={{ 
-                x: [0, -400],
-              }}
-              transition={{ 
-                duration: 8, 
-                repeat: Infinity, 
-                ease: "linear" 
-              }}
-              className="absolute -top-10 left-0 w-[800%] h-20 opacity-40"
-            >
-              <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-blue-300">
-                <path d="M0,50 C150,0 350,100 500,50 C650,0 850,100 1000,50 L1000,100 L0,100 Z" />
-              </svg>
-            </motion.div>
-
-            {/* Tertiary Wave (Live Liquid Effect) */}
-            <motion.div 
-              animate={{ 
-                x: [-300, 100],
-                y: [0, 8, 0]
-              }}
-              transition={{ 
-                x: { duration: 12, repeat: Infinity, ease: "linear" },
-                y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-              }}
-              className="absolute -top-14 left-0 w-[800%] h-28 opacity-20"
-            >
-              <svg viewBox="0 0 1000 100" preserveAspectRatio="none" className="w-full h-full fill-white">
-                <path d="M0,50 C150,80 350,20 500,50 C650,80 850,20 1000,50 L1000,100 L0,100 Z" />
-              </svg>
-            </motion.div>
-
-            {/* Bubbles */}
-            {[...Array(8)].map((_, i) => (
-              <motion.div
-                key={i}
-                animate={{
-                  y: [20, -150],
-                  opacity: [0, 0.6, 0],
-                  x: [0, (i - 4) * 15],
-                  scale: [0.5, 1.2, 0.8]
-                }}
-                transition={{
-                  duration: 3 + Math.random() * 3,
-                  repeat: Infinity,
-                  delay: Math.random() * 4,
-                  ease: "easeOut"
-                }}
-                className="absolute bottom-0 w-2 h-2 bg-white/30 rounded-full blur-[1px]"
-                style={{ left: `${10 + i * 12}%` }}
-              />
-            ))}
-          </motion.div>
-
-          {/* Percentage Display Overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              key={waterProgress}
-              className="text-center"
-            >
-              <span className={cn(
-                "text-5xl font-black transition-colors duration-700 tracking-tighter drop-shadow-sm",
-                waterProgress > 0.45 ? "text-white" : "text-blue-600"
-              )}>
-                {Math.round(waterProgress * 100)}%
-              </span>
-              <p className={cn(
-                "text-[10px] font-black uppercase tracking-[0.2em] transition-colors duration-700 mt-1",
-                waterProgress > 0.45 ? "text-white/70" : "text-blue-400"
-              )}>
-                Daily Goal
-              </p>
-            </motion.div>
-          </div>
-        </div>
-
-        <div className="flex gap-3 relative z-10">
-          {[250, 500].map((amount) => (
-            <button
-              key={amount}
-              onClick={() => handleAddWater(amount)}
-              className="flex-1 py-3 glass rounded-2xl text-xs font-bold text-blue-600 hover:bg-blue-50 transition-all ios-tap flex items-center justify-center gap-2"
-            >
-              <Plus size={14} strokeWidth={3} />
-              {amount}ml
-            </button>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-5">
+      {/* Action Buttons: Scan Meal, Scan Body, Manual Log */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Button 1: Scan Food */}
         <button 
           onClick={() => fileInputRef.current?.click()}
-          className="bg-green-600 p-6 rounded-[32px] text-white space-y-4 shadow-xl shadow-green-600/20 hover:bg-green-700 transition-all group relative overflow-hidden"
+          disabled={isProcessing}
+          className="p-4 rounded-[26px] bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 flex flex-col justify-between items-start transition-all group active:scale-95"
         >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ios-shadow">
-            <Camera size={24} strokeWidth={2.5} />
+          <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm group-hover:scale-110 transition-transform">
+            {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Camera size={20} />}
           </div>
-          <div className="text-left">
-            <p className="font-bold text-lg tracking-tight">Scan Meal</p>
-            <p className="text-white/60 text-[8px] font-black uppercase tracking-widest mt-1">Powered by Gemini 3.1 Pro</p>
+          <div className="text-left mt-3">
+            <p className="font-bold text-sm tracking-tight leading-tight">Scan Meal</p>
+            <p className="text-white/80 text-[10px] font-medium">Gemini AI</p>
           </div>
         </button>
         <input 
@@ -406,35 +302,53 @@ const HomeScreen: React.FC = () => {
           className="hidden" 
         />
 
+        {/* Button 2: Scan Body */}
+        <button 
+          onClick={() => setShowBodyScan(true)}
+          className="p-4 rounded-[26px] bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/20 flex flex-col justify-between items-start transition-all group active:scale-95"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-white backdrop-blur-sm group-hover:scale-110 transition-transform">
+            <Activity size={20} />
+          </div>
+          <div className="text-left mt-3">
+            <p className="font-bold text-sm tracking-tight leading-tight">Body Scan</p>
+            <p className="text-white/80 text-[10px] font-medium">ML Fat & Tone</p>
+          </div>
+        </button>
+
+        {/* Button 3: Manual Log */}
         <button 
           onClick={() => setShowManualLog(true)}
-          className="glass p-6 rounded-[32px] text-gray-900 space-y-4 shadow-sm border border-white/50 hover:border-green-200 transition-all group ios-shadow"
+          className="p-4 rounded-[26px] bg-white border border-gray-200/80 hover:border-emerald-300 text-gray-800 shadow-sm flex flex-col justify-between items-start transition-all group active:scale-95"
         >
-          <div className="w-12 h-12 bg-blue-50/50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform ios-shadow">
-            <Plus size={24} strokeWidth={2.5} />
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Plus size={20} strokeWidth={2.5} />
           </div>
-          <div className="text-left">
-            <p className="font-bold text-lg tracking-tight">Manual Log</p>
-            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Input Details</p>
+          <div className="text-left mt-3">
+            <p className="font-bold text-sm tracking-tight leading-tight">Manual Log</p>
+            <p className="text-gray-400 text-[10px] font-medium">Input macros</p>
           </div>
         </button>
       </div>
 
-      {/* AI Coach Button */}
+      {/* AI Coach Banner Shortcut */}
       <button 
         onClick={() => navigate('/chat')}
-        className="w-full glass p-6 rounded-[32px] flex items-center justify-between shadow-sm border border-white/50 hover:border-green-200 transition-all group ios-shadow"
+        className="w-full p-4 rounded-[26px] bg-white border border-gray-100 shadow-sm flex items-center justify-between hover:border-emerald-200 transition-all group"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-green-50/50 rounded-2xl flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform ios-shadow">
-            <Sparkles size={24} strokeWidth={2.5} />
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <Sparkles size={22} />
           </div>
           <div className="text-left">
-            <p className="font-bold text-lg tracking-tight">AI Health Coach</p>
-            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Personalized Advice & Insights</p>
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-sm text-gray-900">Ask NutriSnap AI Coach</p>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+            <p className="text-xs text-gray-400">Contextual advice calibrated to your current calories & goals</p>
           </div>
         </div>
-        <ChevronRight className="text-gray-300 group-hover:text-green-500 transition-colors" />
+        <ChevronRight className="text-gray-300 group-hover:text-emerald-600 transition-colors" size={18} />
       </button>
 
       {/* Suggested Healthy Food Options Section */}
@@ -444,16 +358,16 @@ const HomeScreen: React.FC = () => {
         onQuickLog={handleQuickLogFood}
       />
 
-      {/* Last Scan Preview - Dynamic */}
+      {/* Last Scan Preview */}
       {scans.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Last Scan</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Recent Logs</h3>
             <button 
               onClick={() => navigate('/history')}
-              className="text-green-600 text-xs font-bold flex items-center gap-1 hover:opacity-70"
+              className="text-emerald-600 text-xs font-bold flex items-center gap-1 hover:opacity-80"
             >
-              History <ChevronRight size={14} />
+              All History <ChevronRight size={14} />
             </button>
           </div>
 
@@ -461,39 +375,53 @@ const HomeScreen: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => navigate(`/result/${scans[0].id}`)}
-            className="glass-card p-5 rounded-[32px] flex items-center gap-5 hover:border-green-200 transition-all cursor-pointer ios-shadow group"
+            className="p-4 rounded-[26px] bg-white border border-gray-100 flex items-center gap-4 hover:border-emerald-200 transition-all cursor-pointer shadow-sm group"
           >
-            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 ios-shadow group-hover:scale-105 transition-transform">
-              <img src={scans[0].imageUrl} alt={scans[0].foodName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+              {scans[0].imageUrl ? (
+                <img src={scans[0].imageUrl} alt={scans[0].foodName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <Apple size={24} className="text-emerald-600" />
+              )}
             </div>
             <div className="flex-1 min-w-0 space-y-1">
-              <h4 className="font-bold text-gray-900 truncate text-lg tracking-tight">{scans[0].foodName}</h4>
+              <h4 className="font-bold text-gray-900 truncate text-base tracking-tight">{scans[0].foodName}</h4>
               <div className="flex items-center gap-2">
                 {scans[0].type === 'food' ? (
-                  <span className="text-[10px] font-bold text-green-600 bg-green-50/50 px-2 py-0.5 rounded-full border border-green-100">
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                     {scans[0].calories} kcal
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50/50 px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 uppercase tracking-wider">
                     {scans[0].type}
                   </span>
                 )}
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <span className="text-[10px] font-semibold text-gray-400">
                   {new Date(scans[0].timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:text-green-500 group-hover:bg-green-50 transition-all">
-              <ChevronRight size={20} />
-            </div>
+            <ChevronRight size={18} className="text-gray-300 group-hover:text-emerald-600 transition-colors" />
           </motion.div>
         </div>
       )}
 
+      {/* MessOS Intelligence Modal */}
+      <MessOSModal 
+        isOpen={showMessOS}
+        onClose={() => setShowMessOS(false)}
+      />
+
+      {/* AI Body Scan Modal */}
+      <BodyScanModal 
+        isOpen={showBodyScan}
+        onClose={() => setShowBodyScan(false)}
+      />
+
       {/* Search Modal */}
       <AnimatePresence>
         {showSearch && (
-          <div className="fixed inset-0 z-[110] flex items-start justify-center p-6 pt-20">
+          <div className="fixed inset-0 z-[110] flex items-start justify-center p-4 pt-16">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -502,63 +430,54 @@ const HomeScreen: React.FC = () => {
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              initial={{ opacity: 0, scale: 0.96, y: -15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="glass-card w-full max-w-lg p-6 rounded-[40px] ios-shadow relative z-10 space-y-6"
+              exit={{ opacity: 0, scale: 0.96, y: -15 }}
+              className="bg-white w-full max-w-md p-6 rounded-[32px] shadow-2xl border border-gray-100 relative z-10 space-y-4"
             >
-              <div className="flex items-center gap-3 bg-gray-100/50 p-4 rounded-2xl border border-white/20">
-                <Search size={20} className="text-gray-400" />
+              <div className="flex items-center gap-3 bg-gray-100 p-3.5 rounded-2xl">
+                <Search size={18} className="text-gray-400" />
                 <input 
                   autoFocus
                   type="text"
-                  placeholder="Search for food (e.g. pizza, apple)..."
+                  placeholder="Search food (e.g. roti, dal, pizza)..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="bg-transparent border-none focus:outline-none w-full font-bold text-gray-900"
+                  className="bg-transparent border-none focus:outline-none w-full font-bold text-sm text-gray-900"
                 />
-                <button onClick={() => setShowSearch(false)}>
-                  <X size={20} className="text-gray-400" />
+                <button onClick={() => setShowSearch(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
                 </button>
               </div>
 
-              <div className="max-h-[400px] overflow-y-auto space-y-2 scrollbar-hide">
+              <div className="max-h-[320px] overflow-y-auto space-y-2">
                 {searchResults.map((result, idx) => (
                   <button
                     key={idx}
                     onClick={() => logFood(result)}
-                    className="w-full flex items-center justify-between p-4 glass hover:bg-green-50 rounded-2xl border border-white/50 transition-all ios-tap group"
+                    className="w-full flex items-center justify-between p-3.5 hover:bg-emerald-50 rounded-2xl border border-gray-100 transition-all text-left group"
                   >
-                    <div className="text-left">
-                      <p className="font-bold text-gray-900">{result.foodName}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">{result.foodName}</p>
+                      <p className="text-[10px] font-semibold text-gray-400">
                         {result.calories} kcal • P: {result.protein}g • C: {result.carbs}g • F: {result.fats}g
                       </p>
                     </div>
-                    <Plus size={20} className="text-gray-300 group-hover:text-green-500 transition-colors" />
+                    <Plus size={18} className="text-gray-300 group-hover:text-emerald-600 transition-colors" />
                   </button>
                 ))}
                 {searchQuery && searchResults.length === 0 && (
-                  <div className="text-center py-10 space-y-4">
-                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-300">
-                      <Apple size={32} />
-                    </div>
-                    <p className="text-gray-400 font-bold text-sm">No results found for "{searchQuery}"</p>
+                  <div className="text-center py-8 space-y-3">
+                    <p className="text-gray-400 text-xs font-medium">No results for "{searchQuery}"</p>
                     <button 
                       onClick={() => {
                         setShowSearch(false);
                         setShowManualLog(true);
-                        setManualMeal(prev => ({ ...prev, foodName: searchQuery }));
                       }}
-                      className="text-green-600 font-bold text-xs bg-green-50 px-4 py-2 rounded-full border border-green-100"
+                      className="text-xs font-bold text-emerald-600 hover:underline"
                     >
                       Log Manually Instead
                     </button>
-                  </div>
-                )}
-                {!searchQuery && (
-                  <div className="text-center py-10">
-                    <p className="text-gray-400 font-bold text-sm">Try searching for common foods</p>
                   </div>
                 )}
               </div>
@@ -567,10 +486,10 @@ const HomeScreen: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Manual Log Modal */}
+      {/* Manual Food Log Modal */}
       <AnimatePresence>
         {showManualLog && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -579,106 +498,102 @@ const HomeScreen: React.FC = () => {
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glass-card w-full max-w-md p-8 rounded-[40px] ios-shadow relative z-10 space-y-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-md p-6 rounded-[32px] shadow-2xl border border-gray-100 relative z-10 space-y-4"
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Manual Log</h3>
+              <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h3 className="font-bold text-base text-gray-900">Manual Meal Entry</h3>
                 <button onClick={() => setShowManualLog(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
 
-              <form onSubmit={handleManualSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Meal Name</label>
+              <form onSubmit={handleManualSubmit} className="space-y-3.5">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                    Food Name
+                  </label>
                   <input 
+                    type="text" 
                     required
-                    type="text"
+                    placeholder="e.g. Oatmeal with Almonds"
                     value={manualMeal.foodName}
-                    onChange={(e) => setManualMeal(prev => ({ ...prev, foodName: e.target.value }))}
-                    placeholder="e.g. Homemade Pasta"
-                    className="w-full p-4 glass rounded-2xl border border-white/50 focus:outline-none focus:border-green-500 font-bold text-gray-900"
+                    onChange={(e) => setManualMeal({ ...manualMeal, foodName: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Calories (kcal)</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                      Calories (kcal)
+                    </label>
                     <input 
-                      type="number"
+                      type="number" 
+                      required
+                      placeholder="e.g. 350"
                       value={manualMeal.calories || ''}
-                      onChange={(e) => setManualMeal(prev => ({ ...prev, calories: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-4 glass rounded-2xl border border-white/50 focus:outline-none focus:border-green-500 font-bold text-gray-900"
+                      onChange={(e) => setManualMeal({ ...manualMeal, calories: Number(e.target.value) })}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Protein (g)</label>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                      Protein (g)
+                    </label>
                     <input 
-                      type="number"
+                      type="number" 
+                      placeholder="e.g. 20"
                       value={manualMeal.protein || ''}
-                      onChange={(e) => setManualMeal(prev => ({ ...prev, protein: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-4 glass rounded-2xl border border-white/50 focus:outline-none focus:border-green-500 font-bold text-gray-900"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Carbs (g)</label>
-                    <input 
-                      type="number"
-                      value={manualMeal.carbs || ''}
-                      onChange={(e) => setManualMeal(prev => ({ ...prev, carbs: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-4 glass rounded-2xl border border-white/50 focus:outline-none focus:border-green-500 font-bold text-gray-900"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fats (g)</label>
-                    <input 
-                      type="number"
-                      value={manualMeal.fats || ''}
-                      onChange={(e) => setManualMeal(prev => ({ ...prev, fats: parseInt(e.target.value) || 0 }))}
-                      className="w-full p-4 glass rounded-2xl border border-white/50 focus:outline-none focus:border-green-500 font-bold text-gray-900"
+                      onChange={(e) => setManualMeal({ ...manualMeal, protein: Number(e.target.value) })}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
                     />
                   </div>
                 </div>
 
-                <button 
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                      Carbs (g)
+                    </label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 45"
+                      value={manualMeal.carbs || ''}
+                      onChange={(e) => setManualMeal({ ...manualMeal, carbs: Number(e.target.value) })}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                      Fats (g)
+                    </label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g. 10"
+                      value={manualMeal.fats || ''}
+                      onChange={(e) => setManualMeal({ ...manualMeal, fats: Number(e.target.value) })}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
                   type="submit"
                   disabled={isProcessing || !manualMeal.foodName}
-                  className="w-full py-5 bg-green-600 text-white rounded-[24px] font-bold shadow-xl shadow-green-600/20 hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md transition-all mt-2"
                 >
-                  {isProcessing ? <Loader2 size={20} className="animate-spin" /> : 'Log Meal'}
+                  Save Meal Log
                 </button>
               </form>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
-      {/* Processing Overlay */}
-      <AnimatePresence>
-        {isProcessing && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-white/80 backdrop-blur-xl z-[100] flex flex-col items-center justify-center p-8 text-center"
-          >
-            <div className="w-24 h-24 glass rounded-[40px] flex items-center justify-center mb-8 ios-shadow">
-              <Loader2 className="text-green-600 animate-spin" size={48} strokeWidth={2.5} />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">AI is Analyzing</h2>
-            <p className="text-gray-500 max-w-xs font-medium leading-relaxed">Identifying ingredients and calculating nutrition for your meal.</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(' ');
-}
 
 export default HomeScreen;

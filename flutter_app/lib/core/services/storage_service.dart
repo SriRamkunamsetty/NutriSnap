@@ -8,6 +8,8 @@ import '../models/user_profile.dart';
 import '../models/scan_result.dart';
 import '../models/chat_message.dart';
 import '../models/daily_summary.dart';
+import '../db/local_database.dart';
+import 'local_file_service.dart';
 
 // Standalone On-Device Storage Service Provider
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -89,40 +91,58 @@ class StorageService {
   }
 
   Future<String> uploadProfileImage(File file, {Function(double)? onProgress}) async {
-    onProgress?.call(0.5);
-    final dataUri = await _fileToBase64DataUri(file);
+    onProgress?.call(0.3);
+    String savedPath;
+    try {
+      final localFileService = LocalFileService();
+      savedPath = await localFileService.saveProfilePicture(file, userId: _currentUid);
+    } catch (_) {
+      savedPath = await _fileToBase64DataUri(file);
+    }
     onProgress?.call(1.0);
     if (_cachedProfile != null) {
-      _cachedProfile = _cachedProfile!.copyWith(photoURL: dataUri);
+      _cachedProfile = _cachedProfile!.copyWith(photoURL: savedPath);
+      try {
+        await LocalDatabase.instance.saveProfile(_cachedProfile!);
+      } catch (e) {
+        debugPrint('[StorageService] Error saving profile to LocalDatabase: $e');
+      }
     }
-    return dataUri;
-  }
-
-  Future<String> uploadAIAvatar(File file, {Function(double)? onProgress}) async {
-    onProgress?.call(0.5);
-    final dataUri = await _fileToBase64DataUri(file);
-    onProgress?.call(1.0);
-    if (_cachedProfile != null) {
-      _cachedProfile = _cachedProfile!.copyWith(aiAvatarURL: dataUri);
-    }
-    return dataUri;
+    return savedPath;
   }
 
   Future<String> uploadBodyImage(File file, {Function(double)? onProgress}) async {
-    onProgress?.call(0.5);
-    final dataUri = await _fileToBase64DataUri(file);
+    onProgress?.call(0.3);
+    String savedPath;
+    try {
+      final localFileService = LocalFileService();
+      savedPath = await localFileService.saveBodyScanImage(file);
+    } catch (_) {
+      savedPath = await _fileToBase64DataUri(file);
+    }
     onProgress?.call(1.0);
     if (_cachedProfile != null) {
-      _cachedProfile = _cachedProfile!.copyWith(bodyScanURL: dataUri);
+      _cachedProfile = _cachedProfile!.copyWith(bodyScanURL: savedPath);
+      try {
+        await LocalDatabase.instance.saveProfile(_cachedProfile!);
+      } catch (e) {
+        debugPrint('[StorageService] Error saving profile to LocalDatabase: $e');
+      }
     }
-    return dataUri;
+    return savedPath;
   }
 
   Future<String> uploadScanImage(File file, {Function(double)? onProgress}) async {
-    onProgress?.call(0.5);
-    final dataUri = await _fileToBase64DataUri(file);
+    onProgress?.call(0.3);
+    String savedPath;
+    try {
+      final localFileService = LocalFileService();
+      savedPath = await localFileService.saveFoodImage(file);
+    } catch (_) {
+      savedPath = await _fileToBase64DataUri(file);
+    }
     onProgress?.call(1.0);
-    return dataUri;
+    return savedPath;
   }
 
   // ==========================================
@@ -258,9 +278,24 @@ class StorageService {
 
   Future<void> saveUserProfile(UserProfile profile) async {
     _cachedProfile = profile;
+    try {
+      await LocalDatabase.instance.saveProfile(profile);
+    } catch (e) {
+      debugPrint('[StorageService] Error saving profile to LocalDatabase: $e');
+    }
   }
 
   Future<UserProfile?> getUserProfile(String uid) async {
+    if (_cachedProfile != null) return _cachedProfile;
+    try {
+      final fromDb = await LocalDatabase.instance.getProfile(uid);
+      if (fromDb != null) {
+        _cachedProfile = fromDb;
+        return fromDb;
+      }
+    } catch (e) {
+      debugPrint('[StorageService] Error loading profile from LocalDatabase: $e');
+    }
     return _cachedProfile;
   }
 

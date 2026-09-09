@@ -25,7 +25,6 @@ class UserProfile extends Equatable {
   final int? waterGoal;
   final List<Reminder>? reminders;
   final AppTheme? theme;
-  final String? aiAvatarURL;
   final bool? hasCompletedOnboarding;
   final DateTime createdAt;
   final DateTime? lastLoginAt;
@@ -52,7 +51,6 @@ class UserProfile extends Equatable {
     this.waterGoal,
     this.reminders,
     this.theme,
-    this.aiAvatarURL,
     this.hasCompletedOnboarding,
     required this.createdAt,
     this.lastLoginAt,
@@ -83,7 +81,6 @@ class UserProfile extends Equatable {
           ?.map((e) => Reminder.fromMap(e as Map<String, dynamic>))
           .toList(),
       theme: AppThemeExtension.fromString(map['theme'] as String?),
-      aiAvatarURL: map['aiAvatarURL'] as String?,
       hasCompletedOnboarding: map['hasCompletedOnboarding'] as bool?,
       createdAt: DateTimeUtils.parse(map['createdAt']) ?? DateTime.now(),
       lastLoginAt: DateTimeUtils.parse(map['lastLoginAt']),
@@ -113,7 +110,6 @@ class UserProfile extends Equatable {
       if (waterGoal != null) 'waterGoal': waterGoal,
       if (reminders != null) 'reminders': reminders!.map((x) => x.toMap()).toList(),
       if (theme != null) 'theme': theme!.name,
-      if (aiAvatarURL != null) 'aiAvatarURL': aiAvatarURL,
       if (hasCompletedOnboarding != null) 'hasCompletedOnboarding': hasCompletedOnboarding,
       'createdAt': DateTimeUtils.toTimestamp(createdAt),
       if (lastLoginAt != null) 'lastLoginAt': DateTimeUtils.toTimestamp(lastLoginAt),
@@ -142,7 +138,6 @@ class UserProfile extends Equatable {
     int? waterGoal,
     List<Reminder>? reminders,
     AppTheme? theme,
-    String? aiAvatarURL,
     bool? hasCompletedOnboarding,
     DateTime? createdAt,
     DateTime? lastLoginAt,
@@ -169,7 +164,6 @@ class UserProfile extends Equatable {
       waterGoal: waterGoal ?? this.waterGoal,
       reminders: reminders ?? this.reminders,
       theme: theme ?? this.theme,
-      aiAvatarURL: aiAvatarURL ?? this.aiAvatarURL,
       hasCompletedOnboarding: hasCompletedOnboarding ?? this.hasCompletedOnboarding,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
@@ -181,7 +175,7 @@ class UserProfile extends Equatable {
         uid, email, displayName, photoURL, height, weight, bmi, bodyType,
         fatEstimate, bodyScanURL, goal, calorieLimit, proteinGoal,
         carbsGoal, fatsGoal, proteinPct, carbsPct, fatsPct, waterGoal,
-        reminders, theme, aiAvatarURL, hasCompletedOnboarding,
+        reminders, theme, hasCompletedOnboarding,
         createdAt, lastLoginAt,
       ];
 }

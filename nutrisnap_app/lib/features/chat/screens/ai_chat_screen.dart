@@ -117,11 +117,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               decoration: BoxDecoration(
                 color: Colors.green.shade100,
                 borderRadius: BorderRadius.circular(12),
-                image: userProfile?.aiAvatarUrl != null 
-                  ? DecorationImage(image: NetworkImage(userProfile!.aiAvatarUrl!), fit: BoxFit.cover)
-                  : null,
               ),
-              child: userProfile?.aiAvatarUrl == null ? Icon(LucideIcons.sparkles, color: Colors.green.shade600, size: 20) : null,
+              child: Icon(LucideIcons.sparkles, color: Colors.green.shade600, size: 20),
             ),
             const SizedBox(width: 12),
             const Column(

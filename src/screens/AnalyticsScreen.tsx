@@ -6,12 +6,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Compos
 import { format, subDays, isSameDay } from 'date-fns';
 import { generateHealthReport } from '../services/pdfService';
 import { triggerHaptic, hapticPatterns } from '../lib/haptics';
+import { BodyScanModal } from '../components/BodyScanModal';
 
 const AnalyticsScreen: React.FC = () => {
   const { profile, dailySummary, scans } = useUser();
   const [isGeneratingReport, setIsGeneratingReport] = React.useState(false);
   const [showReportSuccess, setShowReportSuccess] = React.useState(false);
   const [reportError, setReportError] = React.useState<string | null>(null);
+  const [showBodyScan, setShowBodyScan] = React.useState(false);
 
   const handleDownloadReport = async () => {
     if (!profile) return;
@@ -144,13 +146,53 @@ const AnalyticsScreen: React.FC = () => {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Last 10 Scans</p>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-2xl font-black text-purple-600 tracking-tight">
-              {bodyFatData.length > 0 ? bodyFatData[bodyFatData.length - 1].fat : '--'}%
-            </span>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Current Est.</p>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <span className="text-2xl font-black text-purple-600 tracking-tight">
+                {bodyFatData.length > 0 ? bodyFatData[bodyFatData.length - 1].fat : (profile?.fatEstimate || '--')}%
+              </span>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Current Est.</p>
+            </div>
+            <button
+              onClick={() => {
+                triggerHaptic(hapticPatterns.light);
+                setShowBodyScan(true);
+              }}
+              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-xs font-bold shadow-md shadow-purple-600/20 flex items-center gap-1.5 transition-all"
+            >
+              <Camera size={14} />
+              <span>Scan</span>
+            </button>
           </div>
         </div>
+
+        {/* Latest Body Scan Card if available */}
+        {(profile?.bodyScanURL || profile?.localBodyScanPath) && (
+          <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-100 flex items-center justify-between gap-3 relative z-10">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-purple-200/50 shrink-0 border border-white shadow-sm">
+                <img
+                  src={profile.bodyScanURL || profile.localBodyScanPath}
+                  alt="Body Scan"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-gray-900 capitalize truncate">
+                  {profile.bodyType && profile.bodyType !== 'unknown' ? `${profile.bodyType} Somatotype` : 'Body Composition'}
+                </p>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-purple-600 uppercase tracking-wider">
+                  <span>{profile.fatEstimate || 0}% Body Fat</span>
+                  {profile.muscleMass ? <span>• ~{profile.muscleMass}kg Lean Muscle</span> : null}
+                </div>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-white text-purple-700 text-[10px] font-bold shadow-sm border border-purple-100 shrink-0">
+              {profile.fitnessLevel || 'Intermediate Fit'}
+            </span>
+          </div>
+        )}
 
         <div className="h-64 w-full relative z-10">
           {bodyFatData.length > 0 ? (
@@ -200,6 +242,16 @@ const AnalyticsScreen: React.FC = () => {
                 <Activity size={32} />
               </div>
               <p className="text-sm font-medium text-gray-400 max-w-[200px]">Perform a body scan to see your body fat trends over time.</p>
+              <button
+                onClick={() => {
+                  triggerHaptic(hapticPatterns.medium);
+                  setShowBodyScan(true);
+                }}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-2xl shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Camera size={14} />
+                <span>Start Body Scan</span>
+              </button>
             </div>
           )}
         </div>
@@ -728,6 +780,12 @@ const AnalyticsScreen: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Two-Layer AI Body Scan Modal */}
+      <BodyScanModal 
+        isOpen={showBodyScan}
+        onClose={() => setShowBodyScan(false)}
+      />
     </div>
   );
 };
