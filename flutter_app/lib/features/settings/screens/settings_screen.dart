@@ -12,12 +12,13 @@ import '../../../core/models/user_profile.dart';
 import '../../../core/models/scan_result.dart';
 import '../../../core/enums/app_enums.dart';
 import '../../../core/services/storage_service.dart';
-import '../../../core/services/gemini_service.dart';
+import '../../../core/services/ai_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/ui_feedback.dart';
 import '../../../core/providers/unsaved_changes_provider.dart';
 import '../../auth/providers/user_provider.dart';
 import '../../home/widgets/meal_reminders_sheet.dart';
+import '../widgets/ai_engine_card.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -315,11 +316,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
      try {
        final storageService = ref.read(storageServiceProvider);
-       final geminiService = ref.read(geminiServiceProvider);
-       
+       final aiRouter = ref.read(aiRouterProvider);
+
        final bytes = await image.readAsBytes();
-       // Use geminiService.analyzeBodyImage -> returns {bodyType, fatEstimate}
-       final analysis = await geminiService.analyzeBodyImage(bytes, 'image/jpeg');
+       // On-device Gemma first, cloud Gemini only with explicit consent (see AiRouter).
+       final analysis = await aiRouter.analyzeBodyImage(bytes, 'image/jpeg');
        
        final bodyScanURL = await storageService.uploadBodyImage(File(image.path));
        
@@ -418,6 +419,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
          );
        }
      );
+  }
+
+  Widget _buildHostelModeCard() {
+    final profile = ref.watch(userNotifierProvider).profile;
+    final isHostelUser = profile?.isHostelUser ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: AppColors.border)),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(16)),
+            child: Icon(LucideIcons.utensilsCrossed, color: Colors.green.shade700, size: 20),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Campus / Hostel Mode', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                SizedBox(height: 2),
+                Text(
+                  'Shows the MessOS shortcut on your Home screen for quick mess-menu logging & swap hacks.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isHostelUser,
+            onChanged: (value) async {
+              HapticFeedback.selectionClick();
+              if (profile == null) return;
+              await ref.read(userNotifierProvider.notifier).updateProfile(
+                    profile.copyWith(isHostelUser: value),
+                  );
+            },
+            activeColor: Colors.green.shade600,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTextField(String label, IconData icon, String value, Function(String) onChanged, {TextInputType type = TextInputType.text}) {
@@ -668,6 +714,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ],
                   )
                 ),
+                const SizedBox(height: 16),
+                const AiEngineCard(),
+                const SizedBox(height: 16),
+                _buildHostelModeCard(),
                 const SizedBox(height: 32),
 
                 // 3. EDIT MODE CONTROLS

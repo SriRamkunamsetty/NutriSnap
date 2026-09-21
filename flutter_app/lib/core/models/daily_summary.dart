@@ -28,6 +28,35 @@ class DailySummary extends Equatable {
     );
   }
 
+  Map<String, dynamic> toMap() {
+    return {
+      'date': date,
+      'totalCalories': totalCalories,
+      'totalProtein': totalProtein,
+      'totalCarbs': totalCarbs,
+      'totalFats': totalFats,
+      'totalWater': totalWater,
+    };
+  }
+
+  DailySummary copyWith({
+    String? date,
+    int? totalCalories,
+    int? totalProtein,
+    int? totalCarbs,
+    int? totalFats,
+    int? totalWater,
+  }) {
+    return DailySummary(
+      date: date ?? this.date,
+      totalCalories: totalCalories ?? this.totalCalories,
+      totalProtein: totalProtein ?? this.totalProtein,
+      totalCarbs: totalCarbs ?? this.totalCarbs,
+      totalFats: totalFats ?? this.totalFats,
+      totalWater: totalWater ?? this.totalWater,
+    );
+  }
+
   @override
   List<Object?> get props => [date, totalCalories, totalProtein, totalCarbs, totalFats, totalWater];
 }

@@ -1,12 +1,12 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Simple provider to check if we can reach Firestore
+/// Real on-device network reachability signal (no cloud backend involved).
+/// Used to gate cloud-AI escalation and to show the "Offline Mode" banner —
+/// on-device Gemma inference and local storage work identically either way.
 final isOnlineProvider = StreamProvider<bool>((ref) {
-  // Firestore has a built-in mechanism to track connection state
-  return FirebaseFirestore.instance
-      .collection('.info')
-      .doc('connected')
-      .snapshots()
-      .map((snapshot) => snapshot.data()?['connected'] == true);
+  final connectivity = Connectivity();
+  return connectivity.onConnectivityChanged.map(
+    (results) => results.any((r) => r != ConnectivityResult.none),
+  );
 });

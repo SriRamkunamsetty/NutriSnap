@@ -4,7 +4,10 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  # flutter_gemma 1.8.4 requires Dart >=3.12.0 / Flutter >=3.44.0 — raised
+  # from the previous >=3.0.0 floor so `flutter pub get` fails fast with a
+  # clear SDK-version error instead of a confusing resolution failure.
+  sdk: '>=3.12.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -20,6 +23,17 @@ dependencies:
   intl: ^0.18.1
   cached_network_image: ^3.3.0
   equatable: ^2.0.5
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  path_provider: ^2.1.1
+  connectivity_plus: ^5.0.2
+  url_launcher: ^6.2.2
+  # On-device Gemma inference (privacy-first local AI — see gemma_service.dart).
+  # Current Gemma 4 E2B/E4B releases ship in .litertlm format, so both engines
+  # are registered; MediaPipe (.task) stays supported for other community models.
+  flutter_gemma: ^1.8.4
+  flutter_gemma_litertlm: ^1.7.1
+  flutter_gemma_mediapipe: ^1.0.6
 
 dev_dependencies:
   flutter_test:

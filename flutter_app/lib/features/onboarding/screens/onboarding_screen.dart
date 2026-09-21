@@ -7,7 +7,7 @@ import '../../../core/constants/app_routes.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/firebase_exception_handler.dart';
+import '../../../core/utils/auth_exception_handler.dart';
 import '../../../core/widgets/animated_entry.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
@@ -101,7 +101,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       // Force Riverpod to update so Router catches the new logic natively
       await ref.read(userNotifierProvider.notifier).refreshProfile();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(FirebaseExceptionHandler.handleException(e, 'Onboarding'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AuthExceptionHandler.handleException(e, 'Onboarding'))));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

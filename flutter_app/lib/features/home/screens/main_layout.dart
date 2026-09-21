@@ -96,7 +96,7 @@ class MainLayout extends ConsumerWidget {
     final isOnline = ref.watch(isOnlineProvider).valueOrNull ?? true;
     final userState = ref.watch(userNotifierProvider);
     final authUser = userState.authUser;
-    final isUnverified = authUser != null && !authUser.emailVerified && authUser.providerData.any((p) => p.providerId == 'password');
+    final isUnverified = authUser != null && !authUser.emailVerified;
 
     return Scaffold(
       backgroundColor: AppColors.background,

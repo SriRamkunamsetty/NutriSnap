@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Provider for LocalFileService
 final localFileServiceProvider = Provider<LocalFileService>((ref) {
@@ -40,9 +41,11 @@ class LocalFileService {
       if (customBasePath != null) {
         _baseDir = Directory(customBasePath);
       } else {
-        // Use standard local application directory
-        final appDir = Directory('${Directory.systemTemp.path}/nutrisnap_local_storage');
-        _baseDir = appDir;
+        // Persistent app documents directory — NOT the OS temp/cache dir,
+        // which the OS can wipe at any time to reclaim space and would
+        // silently delete users' meal and body-scan photos.
+        final docsDir = await getApplicationDocumentsDirectory();
+        _baseDir = Directory('${docsDir.path}/nutrisnap_local_storage');
       }
 
       if (!await _baseDir!.exists()) {

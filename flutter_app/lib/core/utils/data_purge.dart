@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../db/local_database.dart';
 import '../services/local_file_service.dart';
@@ -12,7 +16,7 @@ class DataPurgeReport {
   final int purgedMessages;
   final int purgedSummaries;
   final int purgedImages;
-  final bool backupDispatchedToEmail;
+  final String? archiveFilePath;
   final String backupPayloadPreview;
   final DateTime executedAt;
   final String message;
@@ -24,7 +28,7 @@ class DataPurgeReport {
     required this.purgedMessages,
     required this.purgedSummaries,
     required this.purgedImages,
-    required this.backupDispatchedToEmail,
+    required this.archiveFilePath,
     required this.backupPayloadPreview,
     required this.executedAt,
     required this.message,
@@ -38,7 +42,7 @@ class DataPurgeReport {
       'purgedMessages': purgedMessages,
       'purgedSummaries': purgedSummaries,
       'purgedImages': purgedImages,
-      'backupDispatchedToEmail': backupDispatchedToEmail,
+      'archiveFilePath': archiveFilePath,
       'executedAt': executedAt.toIso8601String(),
       'message': message,
     };
@@ -48,15 +52,18 @@ class DataPurgeReport {
   String toString() => 'DataPurgeReport(${toMap()})';
 }
 
-/// NutriSnap AI - Automatic Data Purge & Email Backup Engine
-/// Runs on app startup to remove scan data, chat messages, and summaries older than 30 days.
-/// CRITICAL: Prior to cleaning, compiles and sends the full backup archive exclusively
-/// to the logged-in user's email ID so their historical health records are never lost.
+/// NutriSnap AI - Automatic Data Purge & Local Backup Archive Engine
+/// Runs on app startup to remove scan data, chat messages, and summaries
+/// older than 30 days. Prior to cleaning, compiles the full backup archive
+/// and writes it to a durable local file — this app has no cloud mail relay,
+/// so nothing is silently "emailed" from a background startup routine.
+/// Call [composeBackupEmail] from an explicit user action (e.g. a Settings
+/// button) to hand the same archive to the user's own mail app.
 class DataPurgeManager {
   static const int retentionPeriodDays = 30;
   static DateTime? _lastPurgeTimestamp;
 
-  /// Executes startup purge with pre-cleaning email archive delivery
+  /// Executes startup purge with pre-cleaning local archive delivery
   static Future<DataPurgeReport> runStartupPurge({
     required String userEmail,
     String? userId,
@@ -75,7 +82,7 @@ class DataPurgeManager {
           purgedMessages: 0,
           purgedSummaries: 0,
           purgedImages: 0,
-          backupDispatchedToEmail: false,
+          archiveFilePath: null,
           backupPayloadPreview: 'Purge already executed recently ($hoursSinceLast hours ago)',
           executedAt: now,
           message: 'Purge skipped: already executed within last 12 hours.',
@@ -117,7 +124,7 @@ class DataPurgeManager {
     debugPrint('[DataPurge] Records older than 30 days found: '
         '${scansToPurge.length} scans, ${messagesToPurge.length} chat messages, ${summariesToPurge.length} daily summaries.');
 
-    // 2. COMPILE EMAIL BACKUP ARCHIVE BEFORE CLEANING
+    // 2. COMPILE BACKUP ARCHIVE BEFORE CLEANING
     final backupArchive = {
       'archiveTitle': 'NutriSnap AI - 30-Day Auto-Purge Backup Archive',
       'userLoginEmail': userEmail,
@@ -139,19 +146,16 @@ class DataPurgeManager {
 
     final jsonPayload = jsonEncode(backupArchive);
 
-    // 3. DISPATCH ALL DATA TO USER LOGIN EMAIL ID BEFORE PURGING
-    bool emailDispatched = false;
-    try {
-      emailDispatched = await _sendBackupToUserEmail(
-        userEmail: userEmail,
-        backupJson: jsonPayload,
-        scansCount: scansToPurge.length,
-        summariesCount: summariesToPurge.length,
-      );
-      debugPrint('[DataPurge] Backup archive successfully dispatched to user login email: $userEmail');
-    } catch (e) {
-      debugPrint('[DataPurge] Warning: Email dispatch exception: $e. Proceeding with safe purge audit logging.');
-      emailDispatched = true; // Still marked handled via archive logger
+    // 3. ARCHIVE TO A DURABLE LOCAL FILE BEFORE PURGING
+    final hasDataToArchive = scansToPurge.isNotEmpty || messagesToPurge.isNotEmpty || summariesToPurge.isNotEmpty;
+    String? archiveFilePath;
+    if (hasDataToArchive) {
+      try {
+        archiveFilePath = await _writeArchiveToLocalFile(jsonPayload, now);
+        debugPrint('[DataPurge] Backup archive written to local file: $archiveFilePath');
+      } catch (e) {
+        debugPrint('[DataPurge] Warning: could not write local archive file: $e');
+      }
     }
 
     // 4. SAFELY CLEAN OLD DATA FROM SQLITE LOCAL DATABASE
@@ -188,42 +192,68 @@ class DataPurgeManager {
       purgedMessages: purgedMessagesCount,
       purgedSummaries: purgedSummariesCount,
       purgedImages: purgedImagesCount,
-      backupDispatchedToEmail: emailDispatched,
-      backupPayloadPreview: 'Archive size: ${(jsonPayload.length / 1024).toStringAsFixed(1)} KB dispatched to $userEmail',
+      archiveFilePath: archiveFilePath,
+      backupPayloadPreview: 'Archive size: ${(jsonPayload.length / 1024).toStringAsFixed(1)} KB'
+          '${archiveFilePath != null ? ' saved to $archiveFilePath' : ' (nothing to archive)'}',
       executedAt: now,
-      message: 'Successfully sent backup archive to $userEmail and cleaned records older than 30 days ($purgedScansCount scans, $purgedMessagesCount messages, $purgedSummariesCount daily summaries removed).',
+      message: 'Cleaned records older than 30 days ($purgedScansCount scans, $purgedMessagesCount messages, '
+          '$purgedSummariesCount daily summaries removed)'
+          '${archiveFilePath != null ? '. A full backup archive was saved locally before cleaning.' : '.'}',
     );
 
     debugPrint('[DataPurge] Completed: $result');
     return result;
   }
 
-  /// Sends the backup archive to the user's login email ID
-  static Future<bool> _sendBackupToUserEmail({
+  /// Writes the pre-purge backup archive to a durable local file so it is
+  /// never lost, independent of whether the user ever emails it to themselves.
+  static Future<String> _writeArchiveToLocalFile(String jsonPayload, DateTime now) async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final backupsDir = Directory(p.join(docsDir.path, 'nutrisnap_local_storage', 'backups'));
+    if (!await backupsDir.exists()) {
+      await backupsDir.create(recursive: true);
+    }
+    final fileName = 'nutrisnap_backup_${now.millisecondsSinceEpoch}.json';
+    final file = File(p.join(backupsDir.path, fileName));
+    await file.writeAsString(jsonPayload, flush: true);
+    return file.path;
+  }
+
+  /// Explicitly hands a fresh backup archive to the user's own mail app.
+  /// Must only be called from a direct user action (e.g. a Settings button)
+  /// — never automatically from a background routine, since that would
+  /// surprise the user by switching them into their mail app unattended.
+  static Future<bool> composeBackupEmail({
     required String userEmail,
-    required String backupJson,
-    required int scansCount,
-    required int summariesCount,
+    required String userId,
   }) async {
+    final db = LocalDatabase.instance;
+    await db.initialize();
+    final allUserData = await db.getAllUserData(userId);
+    final jsonPayload = jsonEncode(allUserData);
+
     if (userEmail.isEmpty || !userEmail.contains('@')) {
       debugPrint('[DataPurge] Invalid email provided ($userEmail), skipping mail dispatch.');
       return false;
     }
 
-    final subject = Uri.encodeComponent("NutriSnap AI Backup - Data Older Than 30 Days Cleaned");
+    final subject = Uri.encodeComponent('NutriSnap AI - Health Data Backup');
     final body = Uri.encodeComponent(
       "Hello,\n\n"
-      "In accordance with NutriSnap AI's on-device privacy policy, items older than 30 days have been auto-purged from your device.\n\n"
-      "Before cleaning, your complete backup archive ($scansCount food scans, $summariesCount daily summaries) was prepared and exported.\n\n"
+      "Attached below is your complete NutriSnap AI health record backup, exported directly from your device.\n\n"
       "Backup Archive Payload:\n"
-      "${backupJson.length > 5000 ? backupJson.substring(0, 5000) + '... [truncated for email]' : backupJson}\n\n"
+      "${jsonPayload.length > 5000 ? '${jsonPayload.substring(0, 5000)}... [truncated for email]' : jsonPayload}\n\n"
       "Best regards,\n"
-      "NutriSnap AI On-Device Health Manager"
+      "NutriSnap AI On-Device Health Manager",
     );
 
-    final mailtoUri = 'mailto:$userEmail?subject=$subject&body=$body';
-    debugPrint('[DataPurge] Email delivery prepared for: $userEmail (Subject: $subject)');
+    final mailtoUri = Uri.parse('mailto:$userEmail?subject=$subject&body=$body');
 
-    return true;
+    try {
+      return await launchUrl(mailtoUri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[DataPurge] Failed to launch mail composer: $e');
+      return false;
+    }
   }
 }

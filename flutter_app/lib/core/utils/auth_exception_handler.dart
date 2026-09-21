@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-class FirebaseExceptionHandler {
+/// Formats local on-device errors into user-friendly messages.
+/// (Renamed from FirebaseExceptionHandler — this app has no Firebase dependency;
+/// the name was a leftover from before Firebase was removed.)
+class AuthExceptionHandler {
   static String handleException(dynamic exception, [String context = '']) {
     String message = 'An unexpected error occurred.';
-    
+
     if (exception != null) {
       final str = exception.toString();
       if (str.contains('user-not-found') || str.contains('wrong-password')) {

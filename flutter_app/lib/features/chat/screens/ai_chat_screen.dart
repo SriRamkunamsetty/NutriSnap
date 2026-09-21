@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/models/chat_message.dart';
 import '../../../core/services/storage_service.dart';
-import '../../../core/services/gemini_service.dart';
+import '../../../core/services/ai_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/user_provider.dart';
 
@@ -58,7 +58,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     });
 
     final storage = ref.read(storageServiceProvider);
-    final gemini = ref.read(geminiServiceProvider);
+    final aiRouter = ref.read(aiRouterProvider);
 
     try {
       // 1. Save user message locally
@@ -70,8 +70,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       final scans = await storage.getScanHistory();
       final dailySummary = ref.read(dailySummaryStreamProvider).valueOrNull;
 
-      // 3. Request AI response
-      final response = await gemini.getAICoachResponse(
+      // 3. Request AI response — on-device Gemma first, cloud Gemini only
+      // as an explicit-consent escalation (see AiRouter).
+      final response = await aiRouter.getAICoachResponse(
         historyMessages: history,
         profile: userState.profile!,
         dailySummary: dailySummary,

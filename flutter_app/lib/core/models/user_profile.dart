@@ -26,6 +26,12 @@ class UserProfile extends Equatable {
   final List<Reminder>? reminders;
   final AppTheme? theme;
   final bool? hasCompletedOnboarding;
+  /// Gates the MessOS campus/hostel mess-menu shortcut on the home screen.
+  final bool? isHostelUser;
+  /// Explicit opt-in to escalate AI requests to cloud Gemini when on-device
+  /// Gemma can't handle them (or isn't downloaded). Defaults to false/local-only —
+  /// privacy-first means cloud AI is opt-in, never the silent default.
+  final bool? cloudAiConsent;
   final DateTime createdAt;
   final DateTime? lastLoginAt;
 
@@ -52,6 +58,8 @@ class UserProfile extends Equatable {
     this.reminders,
     this.theme,
     this.hasCompletedOnboarding,
+    this.cloudAiConsent,
+    this.isHostelUser,
     required this.createdAt,
     this.lastLoginAt,
   });
@@ -82,6 +90,8 @@ class UserProfile extends Equatable {
           .toList(),
       theme: AppThemeExtension.fromString(map['theme'] as String?),
       hasCompletedOnboarding: map['hasCompletedOnboarding'] as bool?,
+      cloudAiConsent: map['cloudAiConsent'] as bool?,
+      isHostelUser: map['isHostelUser'] as bool?,
       createdAt: DateTimeUtils.parse(map['createdAt']) ?? DateTime.now(),
       lastLoginAt: DateTimeUtils.parse(map['lastLoginAt']),
     );
@@ -111,8 +121,10 @@ class UserProfile extends Equatable {
       if (reminders != null) 'reminders': reminders!.map((x) => x.toMap()).toList(),
       if (theme != null) 'theme': theme!.name,
       if (hasCompletedOnboarding != null) 'hasCompletedOnboarding': hasCompletedOnboarding,
-      'createdAt': DateTimeUtils.toTimestamp(createdAt),
-      if (lastLoginAt != null) 'lastLoginAt': DateTimeUtils.toTimestamp(lastLoginAt),
+      if (cloudAiConsent != null) 'cloudAiConsent': cloudAiConsent,
+      if (isHostelUser != null) 'isHostelUser': isHostelUser,
+      'createdAt': DateTimeUtils.toIso8601(createdAt),
+      if (lastLoginAt != null) 'lastLoginAt': DateTimeUtils.toIso8601(lastLoginAt),
     };
   }
 
@@ -139,6 +151,8 @@ class UserProfile extends Equatable {
     List<Reminder>? reminders,
     AppTheme? theme,
     bool? hasCompletedOnboarding,
+    bool? cloudAiConsent,
+    bool? isHostelUser,
     DateTime? createdAt,
     DateTime? lastLoginAt,
   }) {
@@ -165,6 +179,8 @@ class UserProfile extends Equatable {
       reminders: reminders ?? this.reminders,
       theme: theme ?? this.theme,
       hasCompletedOnboarding: hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+      cloudAiConsent: cloudAiConsent ?? this.cloudAiConsent,
+      isHostelUser: isHostelUser ?? this.isHostelUser,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     );
@@ -175,7 +191,7 @@ class UserProfile extends Equatable {
         uid, email, displayName, photoURL, height, weight, bmi, bodyType,
         fatEstimate, bodyScanURL, goal, calorieLimit, proteinGoal,
         carbsGoal, fatsGoal, proteinPct, carbsPct, fatsPct, waterGoal,
-        reminders, theme, hasCompletedOnboarding,
+        reminders, theme, hasCompletedOnboarding, cloudAiConsent, isHostelUser,
         createdAt, lastLoginAt,
       ];
 }

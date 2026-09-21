@@ -11,13 +11,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_routes.dart';
 import '../../../core/models/scan_result.dart';
 import '../../../core/services/storage_service.dart';
-import '../../../core/services/gemini_service.dart';
+import '../../../core/services/ai_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/animated_entry.dart';
 import '../../auth/providers/user_provider.dart';
 import '../widgets/calorie_progress_ring.dart';
 import '../widgets/healthy_food_suggestions.dart';
 import '../widgets/meal_reminders_sheet.dart';
+import '../widgets/mess_os_sheet.dart';
+import '../widgets/food_twin_card.dart';
 
 // Standalone Mock Database port matching the React code logic.
 const Map<String, Map<String, dynamic>> _foodDatabase = {
@@ -53,24 +55,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final file = File(image.path);
       final storage = ref.read(storageServiceProvider);
-      final gemini = ref.read(geminiServiceProvider);
-      
-      // 1. Upload to storage 
+      final aiRouter = ref.read(aiRouterProvider);
+
+      // 1. Upload to storage
       final imageUrl = await storage.uploadScanImage(file);
-      
+
       // 2. Fetch bytes
       final bytes = await file.readAsBytes();
-      
-      // 3. Analyze locally
+
+      // 3. Analyze on-device first (Gemma), escalating to cloud Gemini only
+      // with explicit user consent — see AiRouter. If neither is available
+      // (model not downloaded yet, no cloud consent, or the analysis threw),
+      // fall back to a rough offline estimate so the user still gets a result.
       ScanResult? result;
       try {
-        result = await gemini.analyzeFoodImage(bytes, 'image/jpeg');
+        result = await aiRouter.analyzeFoodImage(bytes, 'image/jpeg');
       } catch (e) {
-        debugPrint('AI Analysis failed, falling back...');
-        // Fake local fallback
+        debugPrint('AI analysis threw, falling back to offline estimate: $e');
+      }
+
+      if (result == null) {
         final lowerPath = image.path.toLowerCase();
         final match = _foodDatabase.keys.where((k) => lowerPath.contains(k)).firstOrNull;
-        
+
         if (match != null) {
           result = ScanResult.fromMap({..._foodDatabase[match]!, 'id': 'temp'});
         } else {
@@ -79,7 +86,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             foodName: 'Unknown Meal',
             type: 'food',
             calories: 450, protein: 15, carbs: 40, fats: 20, confidence: 0.5,
-            description: "We couldn't reach the AI, so we provided a standard estimation.",
+            description: "AI analysis wasn't available, so we provided a standard estimation. "
+                "Set up on-device AI in Settings for accurate results.",
           );
         }
       }
@@ -246,6 +254,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: _buildWaterCard(dailySummarySync, profile, waterProgress),
                 ),
 
+                // MessOS campus/hostel mess-menu shortcut (hostel users only)
+                if (profile?.isHostelUser == true) ...[
+                  const SizedBox(height: 16),
+                  const AnimatedFadeSlide(
+                    delay: Duration(milliseconds: 220),
+                    child: MessOsBanner(),
+                  ),
+                ],
+
                 const SizedBox(height: 24),
 
                 // Quick Actions
@@ -358,6 +375,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     profile: profile,
                     onQuickLog: (scan) => _logManual(scan, isSearchModal: false, shouldPop: false),
                   ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Personal Food Twin — learns your repeat/regional meals from your scans
+                const AnimatedFadeSlide(
+                  delay: Duration(milliseconds: 280),
+                  child: FoodTwinCard(),
                 ),
 
                 const SizedBox(height: 24),
