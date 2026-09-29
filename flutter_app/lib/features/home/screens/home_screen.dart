@@ -1,32 +1,29 @@
-import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/models/scan_result.dart';
-import '../../../core/services/storage_service.dart';
-import '../../../core/services/gemini_service.dart';
+import '../../../app.dart' show retentionNoticeProvider;
+import '../../../core/ai/ai_models.dart';
+import '../../../core/providers/app_providers.dart';
+import '../../../core/services/image_preprocessor.dart';
+import '../../scan/screens/scan_review_screen.dart';
+import '../../../core/widgets/ai_model_card.dart';
+import '../../../core/widgets/scan_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/animated_entry.dart';
 import '../../auth/providers/user_provider.dart';
 import '../widgets/calorie_progress_ring.dart';
 import '../widgets/healthy_food_suggestions.dart';
 import '../widgets/meal_reminders_sheet.dart';
-
-// Standalone Mock Database port matching the React code logic.
-const Map<String, Map<String, dynamic>> _foodDatabase = {
-  'pizza': {'foodName': 'Pizza Slice', 'calories': 285, 'protein': 12, 'carbs': 36, 'fats': 10, 'type': 'food', 'confidence': 0.8},
-  'burger': {'foodName': 'Classic Burger', 'calories': 550, 'protein': 25, 'carbs': 45, 'fats': 30, 'type': 'food', 'confidence': 0.8},
-  'salad': {'foodName': 'Garden Salad', 'calories': 150, 'protein': 5, 'carbs': 10, 'fats': 8, 'type': 'food', 'confidence': 0.8},
-  'apple': {'foodName': 'Red Apple', 'calories': 95, 'protein': 0.5, 'carbs': 25, 'fats': 0.3, 'type': 'food', 'confidence': 0.9},
-  'chicken': {'foodName': 'Grilled Chicken', 'calories': 330, 'protein': 50, 'carbs': 0, 'fats': 12, 'type': 'food', 'confidence': 0.85},
-};
+import '../widgets/module_shortcuts.dart';
+import '../widgets/today_activity_card.dart';
+import '../widgets/top_insight_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -39,84 +36,120 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _isProcessing = false;
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _handleImageCapture() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery, 
-      imageQuality: 70,
-      maxWidth: 1024,
-      maxHeight: 1024,
+  /// Entry point for the scan button: make sure the AI is available, pick a
+  /// photo source, then analyse.
+  Future<void> _startScan() async {
+    if (_isProcessing) return;
+
+    if (!ref.read(gemmaModelProvider).isInstalled) {
+      await showAiModelSheet(context);
+      if (!mounted || !ref.read(gemmaModelProvider).isInstalled) return;
+    }
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(LucideIcons.camera),
+                title: const Text('Take a photo', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.image),
+                title: const Text('Choose from gallery', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (image == null) return;
+    if (source == null) return;
+    await _handleImageCapture(source);
+  }
 
-    setState(() => _isProcessing = true);
-
+  Future<void> _handleImageCapture(ImageSource source) async {
+    XFile? image;
     try {
-      final file = File(image.path);
-      final storage = ref.read(storageServiceProvider);
-      final gemini = ref.read(geminiServiceProvider);
-      
-      // 1. Upload to storage 
-      final imageUrl = await storage.uploadScanImage(file);
-      
-      // 2. Fetch bytes
-      final bytes = await file.readAsBytes();
-      
-      // 3. Analyze locally
-      ScanResult? result;
-      try {
-        result = await gemini.analyzeFoodImage(bytes, 'image/jpeg');
-      } catch (e) {
-        debugPrint('AI Analysis failed, falling back...');
-        // Fake local fallback
-        final lowerPath = image.path.toLowerCase();
-        final match = _foodDatabase.keys.where((k) => lowerPath.contains(k)).firstOrNull;
-        
-        if (match != null) {
-          result = ScanResult.fromMap({..._foodDatabase[match]!, 'id': 'temp'});
-        } else {
-          result = const ScanResult(
-            id: 'temp', userId: '', timestamp: '',
-            foodName: 'Unknown Meal',
-            type: 'food',
-            calories: 450, protein: 15, carbs: 40, fats: 20, confidence: 0.5,
-            description: "We couldn't reach the AI, so we provided a standard estimation.",
-          );
-        }
-      }
-      
-      if (result != null && result.foodName.isNotEmpty) {
-         final finalScan = result.copyWith(imageUrl: imageUrl, confidence: result.confidence > 0 ? result.confidence : 1.0);
-         final savedScan = await storage.saveScanResult(finalScan);
-
-         if (savedScan != null && mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scan saved successfully!')));
-           // Navigate mapped to results
-           context.push('\${AppRoutes.result}/\${savedScan.id}', extra: savedScan);
-         }
-      }
+      image = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to process image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not open the camera or gallery. Check app permissions.')));
+      }
+      return;
+    }
+    if (image == null || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    String? outcome;
+    try {
+      final bytes = await image.readAsBytes();
+
+      // Understand the photo on-device. Nothing is saved yet: the user reviews
+      // and confirms the result on the next screen.
+      final ai = ref.read(nutritionAiProvider);
+      final analysis = await ref.read(foodTwinServiceProvider).personalize(await ai.analyzeMeal(bytes));
+      final prepared = await ImagePreprocessor.prepare(bytes);
+
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      outcome = await context.push<String>(
+        AppRoutes.scanReview,
+        extra: ScanReviewArgs.newMeal(analysis: analysis, imageBytes: prepared),
+      );
+    } on AiException catch (e) {
+      if (mounted) await _showScanFailure(e);
+    } catch (e) {
+      debugPrint('[Home] scan failed: $e');
+      if (mounted) {
+        await _showScanFailure(AiException('Something went wrong analysing this photo. Please try again.'));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
     }
+
+    if (outcome == kRetakeResult && mounted) await _startScan();
+  }
+
+  Future<void> _showScanFailure(AiException e) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Couldn't analyse that photo"),
+        content: Text(e.message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, 'close'), child: const Text('Close')),
+          if (e.needsModel)
+            TextButton(onPressed: () => Navigator.pop(ctx, 'model'), child: const Text('Get AI model'))
+          else
+            TextButton(onPressed: () => Navigator.pop(ctx, 'manual'), child: const Text('Log manually')),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (choice == 'manual') _showManualLogModal();
+    if (choice == 'model') await showAiModelSheet(context);
   }
 
   Future<void> _handleAddWater(int amount) async {
-    await ref.read(storageServiceProvider).updateWaterIntake(amount);
+    await ref.read(summaryRepositoryProvider).addWater(amount);
   }
 
-  void _showSearchModal() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Search Modal',
-      pageBuilder: (context, anim1, anim2) => _SearchModal(
-        onResultSelect: (res) => _logManual(res, isSearchModal: true),
-      ),
-    );
-  }
+  void _showSearchModal() => context.push(AppRoutes.foodLibrary);
 
   void _showManualLogModal() {
     showGeneralDialog(
@@ -131,19 +164,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _logManual(ScanResult partialData, {required bool isSearchModal, bool shouldPop = true}) async {
     if (isSearchModal) Navigator.of(context).pop();
-    
+
     setState(() => _isProcessing = true);
     try {
-      final storage = ref.read(storageServiceProvider);
-      final finalScan = partialData.copyWith(
-        imageUrl: 'https://picsum.photos/seed/food/200/200', // React fallback logic constraint
-        confidence: 1.0,
-      );
-
-      final saved = await storage.saveScanResult(finalScan);
-      if (saved != null && mounted) {
+      final saved = await ref.read(scanRepositoryProvider).add(
+            partialData.copyWith(confidence: 1.0, timestamp: DateTime.now().toIso8601String()),
+          );
+      if (mounted) {
         if (shouldPop && !isSearchModal) Navigator.of(context).pop();
-        context.push('\${AppRoutes.result}/\${saved.id}', extra: saved);
+        context.push('${AppRoutes.result}/${saved.id}', extra: saved);
+      }
+    } catch (e) {
+      debugPrint('[Home] manual log failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save this meal.')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -157,13 +191,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dailySummarySync = ref.watch(dailySummaryStreamProvider).valueOrNull;
     final scansSync = ref.watch(scanHistoryStreamProvider).valueOrNull ?? [];
 
-    final calorieProgress = (profile?.calorieLimit != null && profile!.calorieLimit > 0)
-        ? (dailySummarySync?.totalCalories ?? 0) / profile.calorieLimit
-        : 0.0;
+    final calorieLimit = profile?.calorieLimit ?? 0;
+    final calorieProgress =
+        calorieLimit > 0 ? (dailySummarySync?.totalCalories ?? 0) / calorieLimit : 0.0;
         
-    final waterProgress = (profile?.waterGoal != null && profile!.waterGoal > 0)
-        ? (dailySummarySync?.totalWater ?? 0) / profile.waterGoal
-        : (dailySummarySync?.totalWater ?? 0) / 2500;
+    final waterGoal = (profile?.waterGoal ?? 0) > 0 ? profile!.waterGoal! : 2500;
+    final waterProgress = (dailySummarySync?.totalWater ?? 0) / waterGoal;
 
     return Stack(
       children: [
@@ -173,6 +206,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24.0),
               children: [
+                const _RetentionNoticeBanner(),
                 // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -210,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
                             clipBehavior: Clip.hardEdge,
                             child: (profile?.photoURL != null && profile!.photoURL!.isNotEmpty)
-                              ? CachedNetworkImage(imageUrl: profile.photoURL!, fit: BoxFit.cover)
+                              ? ScanImage(path: profile.photoURL, cacheWidth: 160)
                               : const Icon(LucideIcons.user, color: AppColors.textTertiary, size: 20),
                           ),
                         ),
@@ -219,6 +253,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
+
+                // The one insight worth acting on right now
+                const TopInsightCard(),
 
                 // Daily Progress Ring & Macro Overview
                 AnimatedFadeSlide(
@@ -247,27 +284,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
 
                 const SizedBox(height: 24),
+                // Today's movement (steps, active energy)
+                const AnimatedFadeSlide(
+                  delay: Duration(milliseconds: 230),
+                  child: TodayActivityCard(),
+                ),
+
+                const SizedBox(height: 24),
+
+                const ModuleShortcuts(),
+
+                const SizedBox(height: 24),
 
                 // Quick Actions
                 Row(
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: _handleImageCapture,
+                        onTap: _startScan,
                         borderRadius: BorderRadius.circular(32),
                         child: Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(32),
-                            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))],
+                            boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
                                 width: 48, height: 48,
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
                                 child: const Icon(LucideIcons.camera, color: Colors.white),
                               ),
                               const SizedBox(height: 16),
@@ -315,7 +363,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 // AI Coach Link
                 InkWell(
-                  onTap: () => context.push(AppRoutes.chat),
+                  onTap: () => context.go(AppRoutes.coach),
                   borderRadius: BorderRadius.circular(32),
                   child: Container(
                     padding: const EdgeInsets.all(24),
@@ -381,7 +429,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   InkWell(
-                    onTap: () => context.push('/result/\${scansSync.first.id}'),
+                    onTap: () => context.push('/result/${scansSync.first.id}'),
                     borderRadius: BorderRadius.circular(32),
                     child: Container(
                       padding: const EdgeInsets.all(20),
@@ -396,7 +444,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             width: 80, height: 80,
                             decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(16)),
                             clipBehavior: Clip.hardEdge,
-                            child: CachedNetworkImage(imageUrl: scansSync.first.imageUrl ?? '', fit: BoxFit.cover, errorWidget: (c,u,e) => const Icon(LucideIcons.camera)),
+                            child: ScanImage(path: scansSync.first.imageUrl, cacheWidth: 400),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -410,7 +458,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                       decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade100)),
-                                      child: Text('\${scansSync.first.calories} kcal', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                                      child: Text('${scansSync.first.calories} kcal', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
                                     ),
                                   ],
                                 ),
@@ -438,118 +486,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       width: 96, height: 96,
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.1), blurRadius: 40)]),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.1), blurRadius: 40)]),
                       child: const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3)),
                     ).animate().scale(delay: 100.ms).fadeIn(),
                     const SizedBox(height: 32),
                     const Text('AI is Analyzing', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)).animate().fadeIn(delay: 200.ms),
                     const SizedBox(height: 12),
-                    const Text('Identifying ingredients and calculating\nnutrition for your meal.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary)).animate().fadeIn(delay: 300.ms),
+                    const Text('Identifying ingredients and estimating nutrition on your device.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary)).animate().fadeIn(delay: 300.ms),
                   ],
                 ),
               ),
             ),
           ).animate().fadeIn(duration: 200.ms),
-      ],
-    );
-  }
-
-  Widget _buildCalorieCard(dailySummarySync, profile, double progress) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle))
-                      .animate(onPlay: (controller) => controller.repeat(reverse: true)).fadeOut(duration: 1.seconds),
-                  const SizedBox(width: 8),
-                  const Text('DAILY FUEL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green.shade100)),
-                child: Text('\${(progress * 100).round()}%', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.green.shade600)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('\${dailySummarySync?.totalCalories ?? 0}', style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -2)),
-              const SizedBox(width: 8),
-              Text('/ \${profile?.calorieLimit ?? 2000} kcal', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textTertiary)),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Container(
-            height: 12,
-            width: double.infinity,
-            decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(6)),
-            child: Row(
-              children: [
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 1000),
-                    curve: Curves.easeOut,
-                    color: progress > 1 ? Colors.red : AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMacroInfo('Protein', dailySummarySync?.totalProtein ?? 0, Colors.blue),
-              _buildMacroInfo('Carbs', dailySummarySync?.totalCarbs ?? 0, Colors.orange),
-              _buildMacroInfo('Fats', dailySummarySync?.totalFats ?? 0, Colors.purple),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMacroInfo(String label, int value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-            const SizedBox(width: 6),
-            Text(label.toUpperCase(), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.0)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text('\$value', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            const Text('g', style: TextStyle(fontSize: 10, color: AppColors.textTertiary, fontWeight: FontWeight.bold)),
-          ],
-        )
       ],
     );
   }
@@ -588,8 +542,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  Text('\${dailySummarySync?.totalWater ?? 0}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -1)),
-                  Text(' / \${profile?.waterGoal ?? 2500}ml', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textTertiary)),
+                  Text('${dailySummarySync?.totalWater ?? 0}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -1)),
+                  Text(' / ${profile?.waterGoal ?? 2500}ml', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textTertiary)),
                 ],
               ),
             ],
@@ -598,7 +552,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Container(
             height: 160,
             width: double.infinity,
-            decoration: BoxDecoration(color: Colors.blue.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(40), border: Border.all(color: Colors.white.withOpacity(0.2))),
+            decoration: BoxDecoration(color: Colors.blue.shade50.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(40), border: Border.all(color: Colors.white.withValues(alpha: 0.2))),
             clipBehavior: Clip.hardEdge,
             child: Stack(
               alignment: Alignment.bottomCenter,
@@ -617,7 +571,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('\${(progress * 100).round()}%', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: progress > 0.45 ? Colors.white : Colors.blue.shade600, letterSpacing: -2.0)),
+                      Text('${(progress * 100).round()}%', style: TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: progress > 0.45 ? Colors.white : Colors.blue.shade600, letterSpacing: -2.0)),
                       Text('DAILY GOAL', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 2.0, color: progress > 0.45 ? Colors.white70 : Colors.blue.shade400)),
                     ],
                   ),
@@ -677,117 +631,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 // MODALS
 // ---------------------------------------------------------
 
-class _SearchModal extends StatefulWidget {
-  final Function(ScanResult) onResultSelect;
-  const _SearchModal({required this.onResultSelect});
-
-  @override
-  State<_SearchModal> createState() => _SearchModalState();
-}
-
-class _SearchModalState extends State<_SearchModal> {
-  String _query = '';
-  List<Map<String, dynamic>> _results = [];
-
-  void _search(String q) {
-    setState(() {
-      _query = q;
-      if (q.trim().isEmpty) {
-        _results = [];
-      } else {
-        _results = _foodDatabase.values
-            .where((data) => (data['foodName'] as String).toLowerCase().contains(q.toLowerCase()))
-            .toList();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Scaffold(
-        backgroundColor: Colors.black.withOpacity(0.4),
-        body: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Center(
-            child: GestureDetector(
-              onTap: () {}, // Prevent dismissal when tapping inside
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40)),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(16)),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.search, color: AppColors.textTertiary, size: 20),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              autofocus: true,
-                              onChanged: _search,
-                              decoration: const InputDecoration(border: InputBorder.none, hintText: 'Search for food (e.g. pizza)'),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(LucideIcons.x, color: AppColors.textTertiary, size: 20),
-                          )
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      height: 300,
-                      child: _results.isEmpty 
-                        ? Center(child: Text(_query.isEmpty ? 'Try searching for common foods' : 'No results found', style: const TextStyle(color: AppColors.textTertiary, fontWeight: FontWeight.bold)))
-                        : ListView.separated(
-                            itemCount: _results.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (ctx, i) {
-                              final item = _results[i];
-                              return InkWell(
-                                onTap: () {
-                                  widget.onResultSelect(ScanResult.fromMap({...item, 'id': 'temp'}));
-                                },
-                                borderRadius: BorderRadius.circular(16),
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(16)),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(item['foodName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                          Text('\${item['calories']} kcal • P: \${item['protein']}g • C: \${item['carbs']}g', style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
-                                        ],
-                                      ),
-                                      const Icon(LucideIcons.plus, color: AppColors.textTertiary),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                        ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ManualLogModal extends StatefulWidget {
   final Function(ScanResult) onLogSubmit;
   const _ManualLogModal({required this.onLogSubmit});
@@ -824,7 +667,7 @@ class _ManualLogModalState extends State<_ManualLogModal> {
     return GestureDetector(
       onTap: () => Navigator.of(context).pop(),
       child: Scaffold(
-        backgroundColor: Colors.black.withOpacity(0.4),
+        backgroundColor: Colors.black.withValues(alpha: 0.4),
         body: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: Center(
@@ -870,6 +713,50 @@ class _ManualLogModalState extends State<_ManualLogModal> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// One-time notice after old history was archived and removed.
+class _RetentionNoticeBanner extends ConsumerWidget {
+  const _RetentionNoticeBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final report = ref.watch(retentionNoticeProvider);
+    if (report == null) return const SizedBox.shrink();
+
+    final failed = report.failed;
+    final text = failed
+        ? 'We could not archive your older history, so nothing was deleted.'
+        : 'Archived ${report.scans} older meals and removed them from this device. '
+            'You can find the archive in Settings > Data & privacy.';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: failed ? Colors.red.shade50 : Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(failed ? LucideIcons.alertTriangle : LucideIcons.archive,
+              size: 18, color: failed ? Colors.red.shade600 : Colors.blue.shade600),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: failed ? Colors.red.shade800 : Colors.blue.shade800)),
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.x, size: 16),
+            onPressed: () => ref.read(retentionNoticeProvider.notifier).state = null,
+          ),
+        ],
       ),
     );
   }

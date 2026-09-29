@@ -3,15 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/providers/user_provider.dart';
-import '../../features/auth/screens/auth_screen.dart'; 
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/home/screens/result_screen.dart';
-import '../../features/home/screens/analytics_screen.dart';
 import '../../features/home/screens/history_screen.dart';
 import '../../features/home/screens/main_layout.dart';
-import '../../features/chat/screens/ai_chat_screen.dart';
+import '../../features/scan/screens/scan_review_screen.dart';
+import '../../features/activity/screens/activity_screen.dart';
+import '../../features/food/screens/food_library_screen.dart';
+import '../../features/food/screens/food_twin_screen.dart';
+import '../../features/messos/screens/messos_screen.dart';
+import '../../features/coach/screens/coach_hub_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../constants/app_routes.dart';
 import '../models/scan_result.dart';
@@ -57,7 +60,6 @@ class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
   RouterNotifier(this._ref) {
     _ref.listen(userNotifierProvider.select((s) => s.isLoading), (_, __) => notifyListeners());
-    _ref.listen(userNotifierProvider.select((s) => s.authUser?.uid), (_, __) => notifyListeners());
     _ref.listen(userNotifierProvider.select((s) => s.profile?.hasCompletedOnboarding), (_, __) => notifyListeners());
   }
 }
@@ -86,38 +88,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
     ),
     redirect: (context, state) {
-      // Pull state values reactively without causing GoRouter to reconstruct
       final userState = ref.read(userNotifierProvider);
-      final isLoading = userState.isLoading;
-      final isAuth = userState.authUser != null;
-      final hasCompletedOnboarding = userState.profile?.hasCompletedOnboarding ?? false;
-      
-      final currentLoc = state.matchedLocation;
-      final isSplash = currentLoc == AppRoutes.splash;
-      final isLoggingIn = currentLoc == AppRoutes.auth;
-      final isOnboarding = currentLoc == AppRoutes.onboarding;
+      final loc = state.matchedLocation;
+      final isSplash = loc == AppRoutes.splash;
+      final isOnboarding = loc == AppRoutes.onboarding;
 
-      // 4. Initial Screen Loading Flow
-      if (isLoading) {
-        return isSplash ? null : AppRoutes.splash; // 1. Prevent Redirect Loops (Checks current locale first)
+      if (userState.isLoading || userState.errorMessage != null) {
+        return isSplash ? null : AppRoutes.splash;
       }
-
-      // Auth validation gate
-      if (!isAuth) {
-        return isLoggingIn ? null : AppRoutes.auth;
-      }
-
-      // Onboarding validation gate
-      if (!hasCompletedOnboarding) {
+      if (!userState.hasCompletedOnboarding) {
         return isOnboarding ? null : AppRoutes.onboarding;
       }
-
-      // Prevent authenticated, fully onboarded users from getting trapped on splash/auth nodes
-      if (isSplash || isLoggingIn || isOnboarding) {
-        return AppRoutes.home;
-      }
-
-      // 3. Support Deep Links - Returns null allowing any valid auth path (/result/:id etc) to load cleanly
+      // Finished onboarding: never park on splash / onboarding again.
+      if (isSplash || isOnboarding) return AppRoutes.home;
       return null;
     },
     routes: [
@@ -126,12 +109,34 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
-        path: AppRoutes.auth,
-        builder: (context, state) => const AuthScreen(),
-      ),
-      GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.foodLibrary,
+        pageBuilder: (context, state) =>
+            _buildNativePageTransition(context: context, state: state, child: const FoodLibraryScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.foodTwin,
+        pageBuilder: (context, state) =>
+            _buildNativePageTransition(context: context, state: state, child: const FoodTwinScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.messOs,
+        pageBuilder: (context, state) =>
+            _buildNativePageTransition(context: context, state: state, child: const MessOsScreen()),
+      ),
+      // Full-screen review of a scanned meal (outside the tab bar).
+      GoRoute(
+        path: AppRoutes.scanReview,
+        redirect: (context, state) =>
+            state.extra is ScanReviewArgs ? null : AppRoutes.home,
+        pageBuilder: (context, state) => _buildNativePageTransition(
+          context: context,
+          state: state,
+          child: ScanReviewScreen(args: state.extra as ScanReviewArgs),
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) => MainLayout(child: child),
@@ -153,20 +158,33 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: AppRoutes.analytics,
+            path: AppRoutes.activity,
             pageBuilder: (context, state) => _buildNativePageTransition(
               context: context,
               state: state,
-              child: const AnalyticsScreen(),
+              child: const ActivityScreen(),
             ),
           ),
           GoRoute(
-            path: AppRoutes.chat,
+            path: AppRoutes.coach,
             pageBuilder: (context, state) => _buildNativePageTransition(
               context: context,
               state: state,
-              child: const AIChatScreen(),
+              child: CoachHubScreen(
+                initialTab: state.uri.queryParameters['tab'] == 'insights'
+                    ? CoachTab.insights
+                    : CoachTab.coach,
+              ),
             ),
+          ),
+          // Older links keep working and land on the matching Coach tab.
+          GoRoute(
+            path: AppRoutes.analytics,
+            redirect: (context, state) => '${AppRoutes.coach}?tab=insights',
+          ),
+          GoRoute(
+            path: AppRoutes.chat,
+            redirect: (context, state) => AppRoutes.coach,
           ),
           GoRoute(
             path: AppRoutes.settings,

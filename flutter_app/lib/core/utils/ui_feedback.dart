@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class UIFeedback {
+  static void light() => HapticFeedback.lightImpact();
+  static void medium() => HapticFeedback.mediumImpact();
+  static void selection() => HapticFeedback.selectionClick();
+
   static void showSuccess(BuildContext context, String message) {
     HapticFeedback.lightImpact();
     _showSnackBar(

@@ -1,0 +1,3595 @@
+{
+ "version": 1,
+ "source": "NutriSnap reference (approximate values for a typical serving; compiled from public food-composition tables such as IFCT/NIN and USDA, rounded)",
+ "confidence": 0.75,
+ "foods": [
+  {
+   "id": "in_idli",
+   "name": "Idli",
+   "aliases": [
+    "Idly",
+    "Steamed rice cake"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "2 idlis",
+   "servingGrams": 80,
+   "calories": 130,
+   "protein": 4,
+   "carbs": 26,
+   "fats": 0.5,
+   "fiber": 1
+  },
+  {
+   "id": "in_plain_dosa",
+   "name": "Plain Dosa",
+   "aliases": [
+    "Dosa",
+    "Dosai",
+    "Sada Dosa"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 dosa",
+   "servingGrams": 80,
+   "calories": 130,
+   "protein": 3,
+   "carbs": 22,
+   "fats": 3,
+   "fiber": 1
+  },
+  {
+   "id": "in_masala_dosa",
+   "name": "Masala Dosa",
+   "aliases": [
+    "Masala Dose"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Breakfast",
+    "Dinner"
+   ],
+   "category": "breakfast",
+   "serving": "1 dosa",
+   "servingGrams": 180,
+   "calories": 330,
+   "protein": 7,
+   "carbs": 48,
+   "fats": 12,
+   "fiber": 3
+  },
+  {
+   "id": "in_rava_dosa",
+   "name": "Rava Dosa",
+   "aliases": [
+    "Sooji Dosa"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 dosa",
+   "servingGrams": 100,
+   "calories": 190,
+   "protein": 4,
+   "carbs": 28,
+   "fats": 7,
+   "fiber": 1
+  },
+  {
+   "id": "in_uttapam",
+   "name": "Uttapam",
+   "aliases": [
+    "Uthappam",
+    "Oothappam"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 uttapam",
+   "servingGrams": 150,
+   "calories": 210,
+   "protein": 6,
+   "carbs": 34,
+   "fats": 5,
+   "fiber": 2
+  },
+  {
+   "id": "in_pesarattu",
+   "name": "Pesarattu",
+   "aliases": [
+    "Pesaratt",
+    "Green gram dosa",
+    "Moong dosa"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Breakfast",
+    "Home Food"
+   ],
+   "category": "breakfast",
+   "serving": "1 pesarattu",
+   "servingGrams": 100,
+   "calories": 150,
+   "protein": 8,
+   "carbs": 20,
+   "fats": 4,
+   "fiber": 3
+  },
+  {
+   "id": "in_pesarattu_upma",
+   "name": "Pesarattu Upma",
+   "aliases": [
+    "MLA Pesarattu",
+    "Upma Pesarattu"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 pesarattu with upma",
+   "servingGrams": 220,
+   "calories": 320,
+   "protein": 10,
+   "carbs": 46,
+   "fats": 10,
+   "fiber": 4
+  },
+  {
+   "id": "in_upma",
+   "name": "Upma",
+   "aliases": [
+    "Uppittu",
+    "Rava Upma"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 230,
+   "protein": 5,
+   "carbs": 34,
+   "fats": 8,
+   "fiber": 2
+  },
+  {
+   "id": "in_ven_pongal",
+   "name": "Ven Pongal",
+   "aliases": [
+    "Pongal",
+    "Khara Pongal"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 280,
+   "protein": 7,
+   "carbs": 38,
+   "fats": 9,
+   "fiber": 2
+  },
+  {
+   "id": "in_medu_vada",
+   "name": "Medu Vada",
+   "aliases": [
+    "Vada",
+    "Garelu",
+    "Ulundu Vada"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Breakfast",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "2 vadas",
+   "servingGrams": 100,
+   "calories": 280,
+   "protein": 8,
+   "carbs": 28,
+   "fats": 16,
+   "fiber": 3
+  },
+  {
+   "id": "in_punugulu",
+   "name": "Punugulu",
+   "aliases": [
+    "Punugu"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Snacks",
+    "Breakfast"
+   ],
+   "category": "snack",
+   "serving": "5 pieces",
+   "servingGrams": 100,
+   "calories": 300,
+   "protein": 6,
+   "carbs": 32,
+   "fats": 16,
+   "fiber": 2
+  },
+  {
+   "id": "in_poha",
+   "name": "Poha",
+   "aliases": [
+    "Aval Upma",
+    "Flattened rice"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 cup",
+   "servingGrams": 180,
+   "calories": 250,
+   "protein": 5,
+   "carbs": 40,
+   "fats": 8,
+   "fiber": 2
+  },
+  {
+   "id": "in_aloo_bonda",
+   "name": "Aloo Bonda",
+   "aliases": [
+    "Bonda",
+    "Batata Vada"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Snacks",
+    "Breakfast"
+   ],
+   "category": "snack",
+   "serving": "2 bondas",
+   "servingGrams": 100,
+   "calories": 280,
+   "protein": 5,
+   "carbs": 30,
+   "fats": 15,
+   "fiber": 3
+  },
+  {
+   "id": "in_puri",
+   "name": "Puri",
+   "aliases": [
+    "Poori"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Breakfast"
+   ],
+   "category": "bread",
+   "serving": "2 puris",
+   "servingGrams": 60,
+   "calories": 200,
+   "protein": 3.5,
+   "carbs": 24,
+   "fats": 10,
+   "fiber": 1
+  },
+  {
+   "id": "in_puri_bhaji",
+   "name": "Puri Bhaji",
+   "aliases": [
+    "Puri Sabzi",
+    "Poori Aloo"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "3 puris with bhaji",
+   "servingGrams": 250,
+   "calories": 480,
+   "protein": 9,
+   "carbs": 58,
+   "fats": 23,
+   "fiber": 5
+  },
+  {
+   "id": "in_chole_bhature",
+   "name": "Chole Bhature",
+   "aliases": [
+    "Chana Bhatura"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch"
+   ],
+   "category": "breakfast",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 600,
+   "protein": 16,
+   "carbs": 72,
+   "fats": 26,
+   "fiber": 9
+  },
+  {
+   "id": "in_aloo_paratha",
+   "name": "Aloo Paratha",
+   "aliases": [
+    "Potato Paratha"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "bread",
+   "serving": "1 paratha",
+   "servingGrams": 100,
+   "calories": 260,
+   "protein": 5,
+   "carbs": 36,
+   "fats": 10,
+   "fiber": 3
+  },
+  {
+   "id": "in_paratha_plain",
+   "name": "Paratha (plain)",
+   "aliases": [
+    "Plain Paratha",
+    "Lachha Paratha"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "bread",
+   "serving": "1 paratha",
+   "servingGrams": 60,
+   "calories": 200,
+   "protein": 4,
+   "carbs": 28,
+   "fats": 8,
+   "fiber": 1
+  },
+  {
+   "id": "in_moong_dal_chilla",
+   "name": "Moong Dal Chilla",
+   "aliases": [
+    "Cheela",
+    "Pesara Chilla"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 chilla",
+   "servingGrams": 80,
+   "calories": 130,
+   "protein": 8,
+   "carbs": 15,
+   "fats": 4,
+   "fiber": 3
+  },
+  {
+   "id": "in_besan_chilla",
+   "name": "Besan Chilla",
+   "aliases": [
+    "Besan Cheela"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 chilla",
+   "servingGrams": 80,
+   "calories": 140,
+   "protein": 7,
+   "carbs": 16,
+   "fats": 5,
+   "fiber": 3
+  },
+  {
+   "id": "in_oats_porridge",
+   "name": "Oats Porridge",
+   "aliases": [
+    "Oatmeal",
+    "Oats"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 bowl (with milk)",
+   "servingGrams": 250,
+   "calories": 220,
+   "protein": 9,
+   "carbs": 34,
+   "fats": 5,
+   "fiber": 4
+  },
+  {
+   "id": "in_cornflakes_with_milk",
+   "name": "Cornflakes with Milk",
+   "aliases": [
+    "Cereal"
+   ],
+   "tags": [
+    "Breakfast"
+   ],
+   "category": "breakfast",
+   "serving": "1 bowl",
+   "servingGrams": 200,
+   "calories": 200,
+   "protein": 6,
+   "carbs": 36,
+   "fats": 3,
+   "fiber": 1
+  },
+  {
+   "id": "in_bread_2_slices",
+   "name": "Bread (2 slices)",
+   "aliases": [
+    "Bread Slice",
+    "Toast"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "bread",
+   "serving": "2 slices",
+   "servingGrams": 60,
+   "calories": 150,
+   "protein": 5,
+   "carbs": 28,
+   "fats": 2,
+   "fiber": 2
+  },
+  {
+   "id": "in_bread_omelette",
+   "name": "Bread Omelette",
+   "aliases": [
+    "Egg Sandwich"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Breakfast",
+    "Snacks"
+   ],
+   "category": "breakfast",
+   "serving": "1 sandwich",
+   "servingGrams": 150,
+   "calories": 320,
+   "protein": 15,
+   "carbs": 28,
+   "fats": 16,
+   "fiber": 2
+  },
+  {
+   "id": "in_ragi_malt",
+   "name": "Ragi Malt",
+   "aliases": [
+    "Ragi Ambali",
+    "Ragi Java",
+    "Finger millet drink"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 200,
+   "calories": 130,
+   "protein": 3,
+   "carbs": 25,
+   "fats": 2,
+   "fiber": 3
+  },
+  {
+   "id": "in_boiled_egg",
+   "name": "Boiled Egg",
+   "aliases": [
+    "Egg",
+    "Uble Anda"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Breakfast",
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "1 egg",
+   "servingGrams": 50,
+   "calories": 78,
+   "protein": 6.3,
+   "carbs": 0.6,
+   "fats": 5.3,
+   "fiber": 0
+  },
+  {
+   "id": "in_egg_omelette_2_eggs",
+   "name": "Egg Omelette (2 eggs)",
+   "aliases": [
+    "Omelette",
+    "Omlet"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Breakfast",
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "2 eggs",
+   "servingGrams": 110,
+   "calories": 190,
+   "protein": 12,
+   "carbs": 1,
+   "fats": 15,
+   "fiber": 0
+  },
+  {
+   "id": "in_egg_bhurji",
+   "name": "Egg Bhurji",
+   "aliases": [
+    "Anda Bhurji",
+    "Scrambled Egg"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Hostel",
+    "Breakfast",
+    "Dinner"
+   ],
+   "category": "protein",
+   "serving": "2 eggs",
+   "servingGrams": 130,
+   "calories": 210,
+   "protein": 13,
+   "carbs": 3,
+   "fats": 16,
+   "fiber": 0.3
+  },
+  {
+   "id": "in_egg_white",
+   "name": "Egg White",
+   "aliases": [
+    "Egg whites"
+   ],
+   "tags": [
+    "Breakfast",
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "1 white",
+   "servingGrams": 33,
+   "calories": 17,
+   "protein": 3.6,
+   "carbs": 0.2,
+   "fats": 0.1,
+   "fiber": 0
+  },
+  {
+   "id": "in_paneer_raw",
+   "name": "Paneer (raw)",
+   "aliases": [
+    "Cottage cheese",
+    "Paneer cubes"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 265,
+   "protein": 18,
+   "carbs": 1.2,
+   "fats": 20,
+   "fiber": 0
+  },
+  {
+   "id": "in_tofu",
+   "name": "Tofu",
+   "aliases": [
+    "Soya paneer"
+   ],
+   "tags": [
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 80,
+   "protein": 8,
+   "carbs": 2,
+   "fats": 4.8,
+   "fiber": 0.3
+  },
+  {
+   "id": "in_grilled_chicken_breast",
+   "name": "Grilled Chicken Breast",
+   "aliases": [
+    "Chicken breast"
+   ],
+   "tags": [
+    "Home Food",
+    "Protein",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "protein",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 165,
+   "protein": 31,
+   "carbs": 0,
+   "fats": 3.6,
+   "fiber": 0
+  },
+  {
+   "id": "in_whey_protein_1_scoop",
+   "name": "Whey Protein (1 scoop)",
+   "aliases": [
+    "Protein shake",
+    "Protein powder"
+   ],
+   "tags": [
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "1 scoop",
+   "servingGrams": 30,
+   "calories": 120,
+   "protein": 24,
+   "carbs": 3,
+   "fats": 1.5,
+   "fiber": 0
+  },
+  {
+   "id": "in_steamed_rice",
+   "name": "Steamed Rice",
+   "aliases": [
+    "White Rice",
+    "Annam",
+    "Sadam",
+    "Plain rice",
+    "Cooked rice"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 160,
+   "calories": 208,
+   "protein": 4.3,
+   "carbs": 45,
+   "fats": 0.4,
+   "fiber": 0.6
+  },
+  {
+   "id": "in_curd_rice",
+   "name": "Curd Rice",
+   "aliases": [
+    "Perugu Annam",
+    "Thayir Sadam",
+    "Dahi Chawal"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 250,
+   "protein": 7,
+   "carbs": 38,
+   "fats": 7,
+   "fiber": 1
+  },
+  {
+   "id": "in_lemon_rice",
+   "name": "Lemon Rice",
+   "aliases": [
+    "Chitranna",
+    "Nimmakaya Pulihora"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch",
+    "Breakfast"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 180,
+   "calories": 270,
+   "protein": 5,
+   "carbs": 46,
+   "fats": 7,
+   "fiber": 2
+  },
+  {
+   "id": "in_pulihora",
+   "name": "Pulihora",
+   "aliases": [
+    "Tamarind Rice",
+    "Puliyogare",
+    "Chintapandu Pulihora"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 180,
+   "calories": 300,
+   "protein": 5,
+   "carbs": 50,
+   "fats": 9,
+   "fiber": 2
+  },
+  {
+   "id": "in_tomato_rice",
+   "name": "Tomato Rice",
+   "aliases": [
+    "Tomato Bath"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 180,
+   "calories": 260,
+   "protein": 5,
+   "carbs": 44,
+   "fats": 7,
+   "fiber": 2
+  },
+  {
+   "id": "in_jeera_rice",
+   "name": "Jeera Rice",
+   "aliases": [
+    "Cumin Rice"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 160,
+   "calories": 240,
+   "protein": 4.5,
+   "carbs": 43,
+   "fats": 5,
+   "fiber": 1
+  },
+  {
+   "id": "in_vegetable_pulao",
+   "name": "Vegetable Pulao",
+   "aliases": [
+    "Veg Pulav"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 180,
+   "calories": 260,
+   "protein": 5,
+   "carbs": 42,
+   "fats": 8,
+   "fiber": 3
+  },
+  {
+   "id": "in_vegetable_fried_rice",
+   "name": "Vegetable Fried Rice",
+   "aliases": [
+    "Veg Fried Rice"
+   ],
+   "tags": [
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 330,
+   "protein": 7,
+   "carbs": 52,
+   "fats": 10,
+   "fiber": 3
+  },
+  {
+   "id": "in_khichdi",
+   "name": "Khichdi",
+   "aliases": [
+    "Dal Khichdi",
+    "Pesara Pappu Annam"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 210,
+   "protein": 7,
+   "carbs": 36,
+   "fats": 4,
+   "fiber": 3
+  },
+  {
+   "id": "in_bisi_bele_bath",
+   "name": "Bisi Bele Bath",
+   "aliases": [
+    "Bisibelebath",
+    "Sambar Rice"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Lunch"
+   ],
+   "category": "rice",
+   "serving": "1 cup",
+   "servingGrams": 220,
+   "calories": 300,
+   "protein": 8,
+   "carbs": 45,
+   "fats": 9,
+   "fiber": 4
+  },
+  {
+   "id": "in_chicken_biryani",
+   "name": "Chicken Biryani",
+   "aliases": [
+    "Chicken Dum Biryani"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 550,
+   "protein": 25,
+   "carbs": 65,
+   "fats": 18,
+   "fiber": 3
+  },
+  {
+   "id": "in_hyderabadi_dum_biryani",
+   "name": "Hyderabadi Dum Biryani",
+   "aliases": [
+    "Hyderabadi Biryani",
+    "Hyderabad Chicken Biryani"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 560,
+   "protein": 26,
+   "carbs": 64,
+   "fats": 20,
+   "fiber": 3
+  },
+  {
+   "id": "in_mutton_biryani",
+   "name": "Mutton Biryani",
+   "aliases": [
+    "Goat Biryani"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 620,
+   "protein": 28,
+   "carbs": 62,
+   "fats": 28,
+   "fiber": 3
+  },
+  {
+   "id": "in_egg_biryani",
+   "name": "Egg Biryani",
+   "aliases": [
+    "Anda Biryani"
+   ],
+   "tags": [
+    "Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 480,
+   "protein": 16,
+   "carbs": 64,
+   "fats": 18,
+   "fiber": 3
+  },
+  {
+   "id": "in_vegetable_biryani",
+   "name": "Vegetable Biryani",
+   "aliases": [
+    "Veg Biryani"
+   ],
+   "tags": [
+    "Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "rice",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 430,
+   "protein": 9,
+   "carbs": 68,
+   "fats": 13,
+   "fiber": 5
+  },
+  {
+   "id": "in_chapati",
+   "name": "Chapati",
+   "aliases": [
+    "Roti",
+    "Phulka",
+    "Rotti",
+    "Chapathi"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 chapati",
+   "servingGrams": 40,
+   "calories": 105,
+   "protein": 3.5,
+   "carbs": 20,
+   "fats": 1.5,
+   "fiber": 2
+  },
+  {
+   "id": "in_phulka_no_oil",
+   "name": "Phulka (no oil)",
+   "aliases": [
+    "Fulka"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 phulka",
+   "servingGrams": 30,
+   "calories": 80,
+   "protein": 2.8,
+   "carbs": 16,
+   "fats": 0.5,
+   "fiber": 1.5
+  },
+  {
+   "id": "in_tandoori_roti",
+   "name": "Tandoori Roti",
+   "aliases": [
+    "Tandoor Roti"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 roti",
+   "servingGrams": 55,
+   "calories": 140,
+   "protein": 4.5,
+   "carbs": 28,
+   "fats": 1,
+   "fiber": 2
+  },
+  {
+   "id": "in_naan",
+   "name": "Naan",
+   "aliases": [
+    "Butter Naan Plain"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 naan",
+   "servingGrams": 90,
+   "calories": 260,
+   "protein": 8,
+   "carbs": 45,
+   "fats": 5,
+   "fiber": 2
+  },
+  {
+   "id": "in_jowar_roti",
+   "name": "Jowar Roti",
+   "aliases": [
+    "Jonna Rotte",
+    "Jolada Rotti",
+    "Sorghum roti"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Andhra",
+    "Home Food",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 roti",
+   "servingGrams": 45,
+   "calories": 110,
+   "protein": 3.3,
+   "carbs": 23,
+   "fats": 0.9,
+   "fiber": 2.5
+  },
+  {
+   "id": "in_bajra_roti",
+   "name": "Bajra Roti",
+   "aliases": [
+    "Sajja Rotte",
+    "Pearl millet roti"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "bread",
+   "serving": "1 roti",
+   "servingGrams": 50,
+   "calories": 125,
+   "protein": 3.5,
+   "carbs": 24,
+   "fats": 2,
+   "fiber": 3
+  },
+  {
+   "id": "in_ragi_roti",
+   "name": "Ragi Roti",
+   "aliases": [
+    "Ragi Rotte",
+    "Finger millet roti"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Breakfast",
+    "Lunch"
+   ],
+   "category": "bread",
+   "serving": "1 roti",
+   "servingGrams": 50,
+   "calories": 110,
+   "protein": 3,
+   "carbs": 23,
+   "fats": 0.8,
+   "fiber": 3
+  },
+  {
+   "id": "in_ragi_mudde",
+   "name": "Ragi Mudde",
+   "aliases": [
+    "Ragi Sangati",
+    "Ragi Ball",
+    "Ragi Sankati"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "bread",
+   "serving": "1 ball",
+   "servingGrams": 150,
+   "calories": 200,
+   "protein": 5,
+   "carbs": 42,
+   "fats": 1,
+   "fiber": 4
+  },
+  {
+   "id": "in_sarva_pindi",
+   "name": "Sarva Pindi",
+   "aliases": [
+    "Sarvapindi",
+    "Rice flour pancake"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Home Food",
+    "Breakfast",
+    "Snacks"
+   ],
+   "category": "breakfast",
+   "serving": "1 piece",
+   "servingGrams": 100,
+   "calories": 260,
+   "protein": 6,
+   "carbs": 34,
+   "fats": 10,
+   "fiber": 2
+  },
+  {
+   "id": "in_dal_tadka",
+   "name": "Dal Tadka",
+   "aliases": [
+    "Tadka Dal",
+    "Dal Fry",
+    "Toor Dal Tadka"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 160,
+   "protein": 8,
+   "carbs": 20,
+   "fats": 5,
+   "fiber": 4
+  },
+  {
+   "id": "in_pappu",
+   "name": "Pappu",
+   "aliases": [
+    "Mudda Pappu",
+    "Toor Dal",
+    "Andhra Dal",
+    "Kandi Pappu"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 150,
+   "protein": 8,
+   "carbs": 20,
+   "fats": 4,
+   "fiber": 4
+  },
+  {
+   "id": "in_tomato_pappu",
+   "name": "Tomato Pappu",
+   "aliases": [
+    "Tamata Pappu",
+    "Tomato Dal"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 145,
+   "protein": 7,
+   "carbs": 19,
+   "fats": 4.5,
+   "fiber": 4
+  },
+  {
+   "id": "in_mamidikaya_pappu",
+   "name": "Mamidikaya Pappu",
+   "aliases": [
+    "Raw Mango Dal"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 150,
+   "protein": 7,
+   "carbs": 21,
+   "fats": 4,
+   "fiber": 4
+  },
+  {
+   "id": "in_sambar",
+   "name": "Sambar",
+   "aliases": [
+    "Sambhar"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Breakfast"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 85,
+   "protein": 4,
+   "carbs": 12,
+   "fats": 2.5,
+   "fiber": 3
+  },
+  {
+   "id": "in_rasam",
+   "name": "Rasam",
+   "aliases": [
+    "Charu",
+    "Saaru",
+    "Pepper Rasam"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 40,
+   "protein": 1.5,
+   "carbs": 7,
+   "fats": 1,
+   "fiber": 1
+  },
+  {
+   "id": "in_ulava_charu",
+   "name": "Ulava Charu",
+   "aliases": [
+    "Horse gram soup",
+    "Kollu Rasam"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 90,
+   "protein": 5,
+   "carbs": 14,
+   "fats": 1.5,
+   "fiber": 3
+  },
+  {
+   "id": "in_dal_makhani",
+   "name": "Dal Makhani",
+   "aliases": [
+    "Maa ki Dal"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Dinner"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 230,
+   "protein": 8,
+   "carbs": 24,
+   "fats": 11,
+   "fiber": 5
+  },
+  {
+   "id": "in_rajma",
+   "name": "Rajma",
+   "aliases": [
+    "Rajma Masala",
+    "Kidney Bean Curry"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 200,
+   "protein": 9,
+   "carbs": 28,
+   "fats": 5,
+   "fiber": 7
+  },
+  {
+   "id": "in_chole",
+   "name": "Chole",
+   "aliases": [
+    "Chana Masala",
+    "Chickpea Curry"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 210,
+   "protein": 9,
+   "carbs": 27,
+   "fats": 7,
+   "fiber": 7
+  },
+  {
+   "id": "in_moong_dal",
+   "name": "Moong Dal",
+   "aliases": [
+    "Green Gram Dal",
+    "Pesara Pappu"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "dal",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 130,
+   "protein": 8,
+   "carbs": 20,
+   "fats": 2,
+   "fiber": 5
+  },
+  {
+   "id": "in_paneer_butter_masala",
+   "name": "Paneer Butter Masala",
+   "aliases": [
+    "Paneer Makhani"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 360,
+   "protein": 13,
+   "carbs": 11,
+   "fats": 30,
+   "fiber": 2
+  },
+  {
+   "id": "in_palak_paneer",
+   "name": "Palak Paneer",
+   "aliases": [
+    "Spinach Paneer"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 260,
+   "protein": 12,
+   "carbs": 9,
+   "fats": 20,
+   "fiber": 3
+  },
+  {
+   "id": "in_matar_paneer",
+   "name": "Matar Paneer",
+   "aliases": [
+    "Mutter Paneer"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 270,
+   "protein": 12,
+   "carbs": 11,
+   "fats": 19,
+   "fiber": 4
+  },
+  {
+   "id": "in_aloo_gobi",
+   "name": "Aloo Gobi",
+   "aliases": [
+    "Potato Cauliflower"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 160,
+   "protein": 4,
+   "carbs": 18,
+   "fats": 8,
+   "fiber": 4
+  },
+  {
+   "id": "in_mixed_vegetable_curry",
+   "name": "Mixed Vegetable Curry",
+   "aliases": [
+    "Mixed Veg",
+    "Veg Kurma",
+    "Kurma"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 150,
+   "protein": 4,
+   "carbs": 16,
+   "fats": 8,
+   "fiber": 4
+  },
+  {
+   "id": "in_potato_fry",
+   "name": "Potato Fry",
+   "aliases": [
+    "Aloo Fry",
+    "Bangaladumpa Vepudu",
+    "Urulaikizhangu Varuval"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 170,
+   "protein": 2.5,
+   "carbs": 22,
+   "fats": 9,
+   "fiber": 2
+  },
+  {
+   "id": "in_bhindi_fry",
+   "name": "Bhindi Fry",
+   "aliases": [
+    "Okra Fry",
+    "Bendakaya Fry",
+    "Vendakkai Poriyal"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 120,
+   "protein": 2.5,
+   "carbs": 9,
+   "fats": 8,
+   "fiber": 3
+  },
+  {
+   "id": "in_gutti_vankaya_kura",
+   "name": "Gutti Vankaya Kura",
+   "aliases": [
+    "Stuffed Brinjal Curry",
+    "Gutti Vankaya"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 190,
+   "protein": 4,
+   "carbs": 14,
+   "fats": 13,
+   "fiber": 5
+  },
+  {
+   "id": "in_dondakaya_fry",
+   "name": "Dondakaya Fry",
+   "aliases": [
+    "Tindora Fry",
+    "Ivy Gourd Fry",
+    "Kovakkai Fry"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 110,
+   "protein": 2,
+   "carbs": 9,
+   "fats": 7,
+   "fiber": 3
+  },
+  {
+   "id": "in_tomato_curry",
+   "name": "Tomato Curry",
+   "aliases": [
+    "Tomato Kura",
+    "Tamata Kura"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 130,
+   "protein": 2,
+   "carbs": 11,
+   "fats": 9,
+   "fiber": 2
+  },
+  {
+   "id": "in_cabbage_poriyal",
+   "name": "Cabbage Poriyal",
+   "aliases": [
+    "Cabbage Fry",
+    "Cabbage Curry"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 90,
+   "protein": 2,
+   "carbs": 8,
+   "fats": 5,
+   "fiber": 3
+  },
+  {
+   "id": "in_beans_poriyal",
+   "name": "Beans Poriyal",
+   "aliases": [
+    "Beans Fry",
+    "Green Beans Curry"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 100,
+   "protein": 2.5,
+   "carbs": 9,
+   "fats": 6,
+   "fiber": 3
+  },
+  {
+   "id": "in_mirchi_ka_salan",
+   "name": "Mirchi ka Salan",
+   "aliases": [
+    "Mirchi Salan"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 150,
+   "protein": 4,
+   "carbs": 8,
+   "fats": 12,
+   "fiber": 2
+  },
+  {
+   "id": "in_bagara_baingan",
+   "name": "Bagara Baingan",
+   "aliases": [
+    "Bagara Brinjal"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 240,
+   "protein": 5,
+   "carbs": 14,
+   "fats": 18,
+   "fiber": 5
+  },
+  {
+   "id": "in_chicken_curry",
+   "name": "Chicken Curry",
+   "aliases": [
+    "Kodi Kura",
+    "Chicken Gravy",
+    "Kozhi Curry"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 240,
+   "protein": 22,
+   "carbs": 6,
+   "fats": 14,
+   "fiber": 1
+  },
+  {
+   "id": "in_andhra_chicken_curry",
+   "name": "Andhra Chicken Curry",
+   "aliases": [
+    "Andhra Kodi Kura",
+    "Kodi Kura Andhra Style"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 280,
+   "protein": 24,
+   "carbs": 6,
+   "fats": 18,
+   "fiber": 1
+  },
+  {
+   "id": "in_natu_kodi_pulusu",
+   "name": "Natu Kodi Pulusu",
+   "aliases": [
+    "Country Chicken Curry",
+    "Natukodi"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Andhra",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 250,
+   "protein": 23,
+   "carbs": 6,
+   "fats": 15,
+   "fiber": 1
+  },
+  {
+   "id": "in_chicken_fry",
+   "name": "Chicken Fry",
+   "aliases": [
+    "Kodi Vepudu",
+    "Chicken Roast"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Lunch",
+    "Dinner",
+    "Snacks"
+   ],
+   "category": "curry",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 260,
+   "protein": 25,
+   "carbs": 6,
+   "fats": 15,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_chicken_65",
+   "name": "Chicken 65",
+   "aliases": [
+    "Chicken Sixty Five"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Andhra",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 290,
+   "protein": 22,
+   "carbs": 12,
+   "fats": 17,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_butter_chicken",
+   "name": "Butter Chicken",
+   "aliases": [
+    "Murgh Makhani"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 340,
+   "protein": 22,
+   "carbs": 10,
+   "fats": 24,
+   "fiber": 1
+  },
+  {
+   "id": "in_tandoori_chicken",
+   "name": "Tandoori Chicken",
+   "aliases": [
+    "Chicken Tikka"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Dinner",
+    "Protein"
+   ],
+   "category": "protein",
+   "serving": "2 pieces",
+   "servingGrams": 150,
+   "calories": 260,
+   "protein": 32,
+   "carbs": 5,
+   "fats": 12,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_mutton_curry",
+   "name": "Mutton Curry",
+   "aliases": [
+    "Goat Curry",
+    "Mamsam Kura",
+    "Mutton Masala"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 300,
+   "protein": 24,
+   "carbs": 5,
+   "fats": 20,
+   "fiber": 1
+  },
+  {
+   "id": "in_fish_curry",
+   "name": "Fish Curry",
+   "aliases": [
+    "Chepala Pulusu",
+    "Meen Kuzhambu",
+    "Fish Pulusu"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 190,
+   "protein": 20,
+   "carbs": 6,
+   "fats": 9,
+   "fiber": 1
+  },
+  {
+   "id": "in_fish_fry",
+   "name": "Fish Fry",
+   "aliases": [
+    "Chepala Vepudu",
+    "Meen Varuval"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Lunch",
+    "Dinner",
+    "Snacks"
+   ],
+   "category": "curry",
+   "serving": "100 g",
+   "servingGrams": 100,
+   "calories": 230,
+   "protein": 20,
+   "carbs": 8,
+   "fats": 13,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_prawn_curry",
+   "name": "Prawn Curry",
+   "aliases": [
+    "Royyala Kura",
+    "Shrimp Curry"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "1 katori",
+   "servingGrams": 150,
+   "calories": 190,
+   "protein": 20,
+   "carbs": 6,
+   "fats": 9,
+   "fiber": 1
+  },
+  {
+   "id": "in_egg_curry",
+   "name": "Egg Curry",
+   "aliases": [
+    "Kodi Guddu Kura",
+    "Muttai Curry",
+    "Anda Curry"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "curry",
+   "serving": "2 eggs with gravy",
+   "servingGrams": 200,
+   "calories": 280,
+   "protein": 15,
+   "carbs": 8,
+   "fats": 21,
+   "fiber": 2
+  },
+  {
+   "id": "in_hyderabadi_haleem",
+   "name": "Hyderabadi Haleem",
+   "aliases": [
+    "Haleem"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Dinner",
+    "Snacks"
+   ],
+   "category": "curry",
+   "serving": "1 cup",
+   "servingGrams": 200,
+   "calories": 380,
+   "protein": 24,
+   "carbs": 25,
+   "fats": 19,
+   "fiber": 4
+  },
+  {
+   "id": "in_gongura_pachadi",
+   "name": "Gongura Pachadi",
+   "aliases": [
+    "Gongura Chutney",
+    "Sorrel Leaves Chutney",
+    "Roselle Chutney"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "chutney",
+   "serving": "1 tbsp",
+   "servingGrams": 20,
+   "calories": 45,
+   "protein": 1,
+   "carbs": 3,
+   "fats": 4,
+   "fiber": 1
+  },
+  {
+   "id": "in_avakaya",
+   "name": "Avakaya",
+   "aliases": [
+    "Mango Pickle",
+    "Andhra Mango Pickle",
+    "Aavakaya"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "chutney",
+   "serving": "1 tbsp",
+   "servingGrams": 15,
+   "calories": 45,
+   "protein": 0.3,
+   "carbs": 1.5,
+   "fats": 4.5,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_coconut_chutney",
+   "name": "Coconut Chutney",
+   "aliases": [
+    "Kobbari Pachadi",
+    "Thengai Chutney"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "chutney",
+   "serving": "2 tbsp",
+   "servingGrams": 30,
+   "calories": 60,
+   "protein": 1,
+   "carbs": 3,
+   "fats": 5,
+   "fiber": 1.5
+  },
+  {
+   "id": "in_peanut_chutney",
+   "name": "Peanut Chutney",
+   "aliases": [
+    "Palli Pachadi",
+    "Verkadalai Chutney"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "chutney",
+   "serving": "2 tbsp",
+   "servingGrams": 30,
+   "calories": 90,
+   "protein": 4,
+   "carbs": 4,
+   "fats": 7,
+   "fiber": 1.5
+  },
+  {
+   "id": "in_tomato_chutney",
+   "name": "Tomato Chutney",
+   "aliases": [
+    "Tamata Pachadi"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Hostel",
+    "Breakfast"
+   ],
+   "category": "chutney",
+   "serving": "2 tbsp",
+   "servingGrams": 30,
+   "calories": 40,
+   "protein": 0.6,
+   "carbs": 4,
+   "fats": 2.5,
+   "fiber": 1
+  },
+  {
+   "id": "in_idli_podi",
+   "name": "Idli Podi",
+   "aliases": [
+    "Gunpowder",
+    "Karam Podi",
+    "Milagai Podi"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Home Food",
+    "Breakfast"
+   ],
+   "category": "chutney",
+   "serving": "1 tbsp",
+   "servingGrams": 10,
+   "calories": 40,
+   "protein": 2,
+   "carbs": 5,
+   "fats": 1.5,
+   "fiber": 1.5
+  },
+  {
+   "id": "in_curd",
+   "name": "Curd",
+   "aliases": [
+    "Yogurt",
+    "Perugu",
+    "Dahi",
+    "Thayir"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "dairy",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 60,
+   "protein": 3.5,
+   "carbs": 4.7,
+   "fats": 3.3,
+   "fiber": 0
+  },
+  {
+   "id": "in_raita",
+   "name": "Raita",
+   "aliases": [
+    "Boondi Raita",
+    "Cucumber Raita"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "dairy",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 65,
+   "protein": 3,
+   "carbs": 5,
+   "fats": 3.5,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_papad_roasted",
+   "name": "Papad (roasted)",
+   "aliases": [
+    "Appalam",
+    "Appadam"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "snack",
+   "serving": "1 papad",
+   "servingGrams": 12,
+   "calories": 40,
+   "protein": 2.5,
+   "carbs": 6,
+   "fats": 0.5,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_papad_fried",
+   "name": "Papad (fried)",
+   "aliases": [
+    "Fried Appalam"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Lunch"
+   ],
+   "category": "snack",
+   "serving": "1 papad",
+   "servingGrams": 15,
+   "calories": 70,
+   "protein": 2.5,
+   "carbs": 6,
+   "fats": 4,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_onion_salad",
+   "name": "Onion Salad",
+   "aliases": [
+    "Onion Rings",
+    "Ulli Salad"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "salad",
+   "serving": "50 g",
+   "servingGrams": 50,
+   "calories": 20,
+   "protein": 0.6,
+   "carbs": 4.6,
+   "fats": 0,
+   "fiber": 1
+  },
+  {
+   "id": "in_green_salad",
+   "name": "Green Salad",
+   "aliases": [
+    "Cucumber Tomato Salad",
+    "Kachumber"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "salad",
+   "serving": "1 bowl",
+   "servingGrams": 100,
+   "calories": 35,
+   "protein": 1.5,
+   "carbs": 7,
+   "fats": 0.3,
+   "fiber": 2
+  },
+  {
+   "id": "in_sprouts_salad",
+   "name": "Sprouts Salad",
+   "aliases": [
+    "Moong Sprouts",
+    "Sprouts Chaat"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Breakfast",
+    "Snacks"
+   ],
+   "category": "salad",
+   "serving": "1 bowl",
+   "servingGrams": 100,
+   "calories": 90,
+   "protein": 7,
+   "carbs": 13,
+   "fats": 1,
+   "fiber": 4
+  },
+  {
+   "id": "in_andhra_meals_veg",
+   "name": "Andhra Meals (veg)",
+   "aliases": [
+    "Andhra Veg Meals",
+    "Bhojanam",
+    "Veg Thali Andhra"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Lunch"
+   ],
+   "category": "meal",
+   "serving": "1 plate",
+   "servingGrams": 550,
+   "calories": 720,
+   "protein": 22,
+   "carbs": 118,
+   "fats": 18,
+   "fiber": 12
+  },
+  {
+   "id": "in_telangana_meals",
+   "name": "Telangana Meals",
+   "aliases": [
+    "Telangana Thali",
+    "Telangana Bhojanam"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Lunch"
+   ],
+   "category": "meal",
+   "serving": "1 plate",
+   "servingGrams": 550,
+   "calories": 740,
+   "protein": 24,
+   "carbs": 115,
+   "fats": 20,
+   "fiber": 11
+  },
+  {
+   "id": "in_south_indian_meals",
+   "name": "South Indian Meals",
+   "aliases": [
+    "Full Meals",
+    "Sappadu",
+    "Oota"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Lunch"
+   ],
+   "category": "meal",
+   "serving": "1 plate",
+   "servingGrams": 550,
+   "calories": 700,
+   "protein": 20,
+   "carbs": 115,
+   "fats": 17,
+   "fiber": 11
+  },
+  {
+   "id": "in_north_indian_thali_veg",
+   "name": "North Indian Thali (veg)",
+   "aliases": [
+    "Veg Thali",
+    "Roti Sabzi Dal Rice"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Lunch",
+    "Dinner"
+   ],
+   "category": "meal",
+   "serving": "1 thali",
+   "servingGrams": 600,
+   "calories": 800,
+   "protein": 24,
+   "carbs": 120,
+   "fats": 24,
+   "fiber": 14
+  },
+  {
+   "id": "in_hostel_mess_lunch",
+   "name": "Hostel Mess Lunch",
+   "aliases": [
+    "Mess Meal",
+    "Mess Lunch"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Lunch"
+   ],
+   "category": "meal",
+   "serving": "1 plate (rice, dal, sabzi)",
+   "servingGrams": 450,
+   "calories": 620,
+   "protein": 17,
+   "carbs": 105,
+   "fats": 14,
+   "fiber": 8
+  },
+  {
+   "id": "in_samosa",
+   "name": "Samosa",
+   "aliases": [
+    "Aloo Samosa"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "1 piece",
+   "servingGrams": 80,
+   "calories": 230,
+   "protein": 4,
+   "carbs": 25,
+   "fats": 13,
+   "fiber": 2
+  },
+  {
+   "id": "in_mirchi_bajji",
+   "name": "Mirchi Bajji",
+   "aliases": [
+    "Mirapakaya Bajji",
+    "Chilli Bajji"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "2 pieces",
+   "servingGrams": 80,
+   "calories": 200,
+   "protein": 3,
+   "carbs": 18,
+   "fats": 13,
+   "fiber": 2
+  },
+  {
+   "id": "in_pakora",
+   "name": "Pakora",
+   "aliases": [
+    "Pakoda",
+    "Onion Pakoda",
+    "Bajji"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "5 pieces",
+   "servingGrams": 80,
+   "calories": 230,
+   "protein": 5,
+   "carbs": 22,
+   "fats": 14,
+   "fiber": 2
+  },
+  {
+   "id": "in_vada_pav",
+   "name": "Vada Pav",
+   "aliases": [
+    "Wada Pav"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "1 piece",
+   "servingGrams": 130,
+   "calories": 290,
+   "protein": 6,
+   "carbs": 40,
+   "fats": 12,
+   "fiber": 3
+  },
+  {
+   "id": "in_pav_bhaji",
+   "name": "Pav Bhaji",
+   "aliases": [
+    "Bhaji Pav"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Snacks",
+    "Dinner"
+   ],
+   "category": "snack",
+   "serving": "1 plate",
+   "servingGrams": 300,
+   "calories": 400,
+   "protein": 9,
+   "carbs": 55,
+   "fats": 16,
+   "fiber": 6
+  },
+  {
+   "id": "in_pani_puri",
+   "name": "Pani Puri",
+   "aliases": [
+    "Golgappa",
+    "Puchka"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "6 pieces",
+   "servingGrams": 100,
+   "calories": 200,
+   "protein": 3,
+   "carbs": 32,
+   "fats": 7,
+   "fiber": 2
+  },
+  {
+   "id": "in_bhel_puri",
+   "name": "Bhel Puri",
+   "aliases": [
+    "Bhel"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "1 plate",
+   "servingGrams": 100,
+   "calories": 180,
+   "protein": 4,
+   "carbs": 33,
+   "fats": 4,
+   "fiber": 3
+  },
+  {
+   "id": "in_dhokla",
+   "name": "Dhokla",
+   "aliases": [
+    "Khaman"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks",
+    "Breakfast"
+   ],
+   "category": "snack",
+   "serving": "3 pieces",
+   "servingGrams": 100,
+   "calories": 160,
+   "protein": 6,
+   "carbs": 24,
+   "fats": 4,
+   "fiber": 2
+  },
+  {
+   "id": "in_kachori",
+   "name": "Kachori",
+   "aliases": [
+    "Pyaaz Kachori"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "1 piece",
+   "servingGrams": 60,
+   "calories": 240,
+   "protein": 5,
+   "carbs": 26,
+   "fats": 13,
+   "fiber": 2
+  },
+  {
+   "id": "in_murukku",
+   "name": "Murukku",
+   "aliases": [
+    "Chakli",
+    "Chakralu"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "30 g",
+   "servingGrams": 30,
+   "calories": 160,
+   "protein": 3,
+   "carbs": 19,
+   "fats": 8,
+   "fiber": 1
+  },
+  {
+   "id": "in_sakinalu",
+   "name": "Sakinalu",
+   "aliases": [
+    "Sakinalu Snack",
+    "Genikalu"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "30 g",
+   "servingGrams": 30,
+   "calories": 150,
+   "protein": 2.5,
+   "carbs": 18,
+   "fats": 8,
+   "fiber": 1
+  },
+  {
+   "id": "in_mixture_namkeen",
+   "name": "Mixture (Namkeen)",
+   "aliases": [
+    "Chivda",
+    "Bombay Mix"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "30 g",
+   "servingGrams": 30,
+   "calories": 170,
+   "protein": 4,
+   "carbs": 14,
+   "fats": 11,
+   "fiber": 2
+  },
+  {
+   "id": "in_roasted_chana",
+   "name": "Roasted Chana",
+   "aliases": [
+    "Bhuna Chana",
+    "Vepudu Senagalu"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks",
+    "Protein"
+   ],
+   "category": "snack",
+   "serving": "30 g",
+   "servingGrams": 30,
+   "calories": 100,
+   "protein": 6,
+   "carbs": 16,
+   "fats": 1.6,
+   "fiber": 5
+  },
+  {
+   "id": "in_roasted_peanuts",
+   "name": "Roasted Peanuts",
+   "aliases": [
+    "Palli",
+    "Groundnuts"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks",
+    "Protein"
+   ],
+   "category": "snack",
+   "serving": "30 g",
+   "servingGrams": 30,
+   "calories": 170,
+   "protein": 7.5,
+   "carbs": 5,
+   "fats": 14,
+   "fiber": 2.5
+  },
+  {
+   "id": "in_almonds",
+   "name": "Almonds",
+   "aliases": [
+    "Badam"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks",
+    "Protein"
+   ],
+   "category": "snack",
+   "serving": "10 pieces",
+   "servingGrams": 12,
+   "calories": 70,
+   "protein": 2.5,
+   "carbs": 2.6,
+   "fats": 6,
+   "fiber": 1.5
+  },
+  {
+   "id": "in_cashew_nuts",
+   "name": "Cashew Nuts",
+   "aliases": [
+    "Kaju",
+    "Munthiri"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "10 pieces",
+   "servingGrams": 15,
+   "calories": 85,
+   "protein": 2.7,
+   "carbs": 4.5,
+   "fats": 6.8,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_maggi_noodles",
+   "name": "Maggi Noodles",
+   "aliases": [
+    "Instant Noodles",
+    "Masala Noodles"
+   ],
+   "tags": [
+    "Indian",
+    "Hostel",
+    "Snacks",
+    "Dinner"
+   ],
+   "category": "snack",
+   "serving": "1 pack",
+   "servingGrams": 70,
+   "calories": 310,
+   "protein": 7,
+   "carbs": 43,
+   "fats": 12,
+   "fiber": 2
+  },
+  {
+   "id": "in_veg_sandwich_grilled",
+   "name": "Veg Sandwich (grilled)",
+   "aliases": [
+    "Veg Sandwich"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks",
+    "Breakfast"
+   ],
+   "category": "snack",
+   "serving": "1 sandwich",
+   "servingGrams": 150,
+   "calories": 250,
+   "protein": 8,
+   "carbs": 34,
+   "fats": 9,
+   "fiber": 3
+  },
+  {
+   "id": "in_pizza_slice",
+   "name": "Pizza Slice",
+   "aliases": [
+    "Pizza"
+   ],
+   "tags": [
+    "Snacks",
+    "Dinner"
+   ],
+   "category": "snack",
+   "serving": "1 slice",
+   "servingGrams": 100,
+   "calories": 285,
+   "protein": 12,
+   "carbs": 36,
+   "fats": 10,
+   "fiber": 2
+  },
+  {
+   "id": "in_burger_chicken",
+   "name": "Burger (chicken)",
+   "aliases": [
+    "Chicken Burger",
+    "Burger"
+   ],
+   "tags": [
+    "Snacks",
+    "Lunch"
+   ],
+   "category": "snack",
+   "serving": "1 burger",
+   "servingGrams": 200,
+   "calories": 450,
+   "protein": 24,
+   "carbs": 40,
+   "fats": 20,
+   "fiber": 2
+  },
+  {
+   "id": "in_marie_biscuits",
+   "name": "Marie Biscuits",
+   "aliases": [
+    "Biscuits",
+    "Tea Biscuits"
+   ],
+   "tags": [
+    "Indian",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "4 biscuits",
+   "servingGrams": 28,
+   "calories": 125,
+   "protein": 2,
+   "carbs": 21,
+   "fats": 3,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_osmania_biscuit",
+   "name": "Osmania Biscuit",
+   "aliases": [
+    "Osmania"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Snacks"
+   ],
+   "category": "snack",
+   "serving": "2 biscuits",
+   "servingGrams": 30,
+   "calories": 140,
+   "protein": 2,
+   "carbs": 20,
+   "fats": 6,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_gulab_jamun",
+   "name": "Gulab Jamun",
+   "aliases": [
+    "Gulabjamun"
+   ],
+   "tags": [
+    "Indian",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 40,
+   "calories": 150,
+   "protein": 2,
+   "carbs": 22,
+   "fats": 6,
+   "fiber": 0
+  },
+  {
+   "id": "in_jalebi",
+   "name": "Jalebi",
+   "aliases": [
+    "Jilebi"
+   ],
+   "tags": [
+    "Indian",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "2 pieces",
+   "servingGrams": 50,
+   "calories": 190,
+   "protein": 1,
+   "carbs": 35,
+   "fats": 6,
+   "fiber": 0
+  },
+  {
+   "id": "in_rasgulla",
+   "name": "Rasgulla",
+   "aliases": [
+    "Rosogolla"
+   ],
+   "tags": [
+    "Indian",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 40,
+   "calories": 106,
+   "protein": 2,
+   "carbs": 22,
+   "fats": 0.5,
+   "fiber": 0
+  },
+  {
+   "id": "in_besan_laddu",
+   "name": "Besan Laddu",
+   "aliases": [
+    "Laddu",
+    "Ladoo",
+    "Laddoo"
+   ],
+   "tags": [
+    "Indian",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 40,
+   "calories": 180,
+   "protein": 3,
+   "carbs": 22,
+   "fats": 9,
+   "fiber": 1
+  },
+  {
+   "id": "in_payasam",
+   "name": "Payasam",
+   "aliases": [
+    "Kheer",
+    "Paramannam",
+    "Pal Payasam"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Andhra",
+    "Telangana",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 150,
+   "protein": 3.5,
+   "carbs": 25,
+   "fats": 4,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_rava_kesari",
+   "name": "Rava Kesari",
+   "aliases": [
+    "Sheera",
+    "Kesari Bath"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Sweets",
+    "Breakfast"
+   ],
+   "category": "sweet",
+   "serving": "1/2 cup",
+   "servingGrams": 100,
+   "calories": 250,
+   "protein": 3,
+   "carbs": 40,
+   "fats": 8,
+   "fiber": 1
+  },
+  {
+   "id": "in_bobbatlu",
+   "name": "Bobbatlu",
+   "aliases": [
+    "Puran Poli",
+    "Holige",
+    "Obbattu"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 80,
+   "calories": 260,
+   "protein": 5,
+   "carbs": 45,
+   "fats": 7,
+   "fiber": 2
+  },
+  {
+   "id": "in_ariselu",
+   "name": "Ariselu",
+   "aliases": [
+    "Adhirasam"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Telangana",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 40,
+   "calories": 180,
+   "protein": 2,
+   "carbs": 30,
+   "fats": 6,
+   "fiber": 0.5
+  },
+  {
+   "id": "in_pootharekulu",
+   "name": "Pootharekulu",
+   "aliases": [
+    "Paper Sweet"
+   ],
+   "tags": [
+    "Indian",
+    "Andhra",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 20,
+   "calories": 100,
+   "protein": 1,
+   "carbs": 15,
+   "fats": 4,
+   "fiber": 0
+  },
+  {
+   "id": "in_double_ka_meetha",
+   "name": "Double ka Meetha",
+   "aliases": [
+    "Shahi Tukda"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 piece",
+   "servingGrams": 100,
+   "calories": 320,
+   "protein": 5,
+   "carbs": 40,
+   "fats": 15,
+   "fiber": 1
+  },
+  {
+   "id": "in_qubani_ka_meetha",
+   "name": "Qubani ka Meetha",
+   "aliases": [
+    "Khubani ka Meetha",
+    "Apricot Dessert"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Sweets"
+   ],
+   "category": "sweet",
+   "serving": "1 katori",
+   "servingGrams": 100,
+   "calories": 230,
+   "protein": 2,
+   "carbs": 42,
+   "fats": 6,
+   "fiber": 3
+  },
+  {
+   "id": "in_tea_with_milk_sugar",
+   "name": "Tea with Milk & Sugar",
+   "aliases": [
+    "Chai",
+    "Tea"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Breakfast",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 70,
+   "protein": 2,
+   "carbs": 11,
+   "fats": 2.2,
+   "fiber": 0
+  },
+  {
+   "id": "in_filter_coffee",
+   "name": "Filter Coffee",
+   "aliases": [
+    "Kaapi",
+    "Coffee with Milk",
+    "Coffee"
+   ],
+   "tags": [
+    "Indian",
+    "South Indian",
+    "Home Food",
+    "Breakfast",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 70,
+   "protein": 2,
+   "carbs": 10,
+   "fats": 2.5,
+   "fiber": 0
+  },
+  {
+   "id": "in_irani_chai",
+   "name": "Irani Chai",
+   "aliases": [
+    "Hyderabadi Chai"
+   ],
+   "tags": [
+    "Indian",
+    "Telangana",
+    "Breakfast",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 90,
+   "protein": 3,
+   "carbs": 12,
+   "fats": 3,
+   "fiber": 0
+  },
+  {
+   "id": "in_milk_full_cream",
+   "name": "Milk (full cream)",
+   "aliases": [
+    "Paalu",
+    "Doodh"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Breakfast",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 200,
+   "calories": 125,
+   "protein": 6.5,
+   "carbs": 9.5,
+   "fats": 7,
+   "fiber": 0
+  },
+  {
+   "id": "in_buttermilk",
+   "name": "Buttermilk",
+   "aliases": [
+    "Majjiga",
+    "Chaas",
+    "Mor",
+    "Neer Mor"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Lunch",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 200,
+   "calories": 35,
+   "protein": 2,
+   "carbs": 3,
+   "fats": 1.5,
+   "fiber": 0
+  },
+  {
+   "id": "in_sweet_lassi",
+   "name": "Sweet Lassi",
+   "aliases": [
+    "Lassi"
+   ],
+   "tags": [
+    "Indian",
+    "North Indian",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 250,
+   "calories": 180,
+   "protein": 6,
+   "carbs": 30,
+   "fats": 4,
+   "fiber": 0
+  },
+  {
+   "id": "in_coconut_water",
+   "name": "Coconut Water",
+   "aliases": [
+    "Kobbari Neellu",
+    "Elaneer",
+    "Tender Coconut Water"
+   ],
+   "tags": [
+    "Indian",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 250,
+   "calories": 45,
+   "protein": 1.7,
+   "carbs": 9,
+   "fats": 0.5,
+   "fiber": 0
+  },
+  {
+   "id": "in_sugarcane_juice",
+   "name": "Sugarcane Juice",
+   "aliases": [
+    "Cheruku Rasam"
+   ],
+   "tags": [
+    "Indian",
+    "Beverages"
+   ],
+   "category": "beverage",
+   "serving": "1 glass",
+   "servingGrams": 250,
+   "calories": 180,
+   "protein": 0.5,
+   "carbs": 45,
+   "fats": 0,
+   "fiber": 0
+  },
+  {
+   "id": "in_banana",
+   "name": "Banana",
+   "aliases": [
+    "Arati Pandu",
+    "Vazhaipazham"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Hostel",
+    "Fruits",
+    "Breakfast",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 medium",
+   "servingGrams": 120,
+   "calories": 105,
+   "protein": 1.3,
+   "carbs": 27,
+   "fats": 0.4,
+   "fiber": 3
+  },
+  {
+   "id": "in_apple",
+   "name": "Apple",
+   "aliases": [
+    "Seb"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 medium",
+   "servingGrams": 180,
+   "calories": 95,
+   "protein": 0.5,
+   "carbs": 25,
+   "fats": 0.3,
+   "fiber": 4
+  },
+  {
+   "id": "in_mango",
+   "name": "Mango",
+   "aliases": [
+    "Mamidi Pandu",
+    "Aam"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 cup sliced",
+   "servingGrams": 165,
+   "calories": 99,
+   "protein": 1.4,
+   "carbs": 25,
+   "fats": 0.6,
+   "fiber": 2.6
+  },
+  {
+   "id": "in_papaya",
+   "name": "Papaya",
+   "aliases": [
+    "Boppayi",
+    "Papita"
+   ],
+   "tags": [
+    "Indian",
+    "Home Food",
+    "Fruits",
+    "Breakfast"
+   ],
+   "category": "fruit",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 60,
+   "protein": 0.7,
+   "carbs": 15,
+   "fats": 0.2,
+   "fiber": 2.5
+  },
+  {
+   "id": "in_orange",
+   "name": "Orange",
+   "aliases": [
+    "Narinja",
+    "Santra"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 medium",
+   "servingGrams": 130,
+   "calories": 62,
+   "protein": 1.2,
+   "carbs": 15,
+   "fats": 0.2,
+   "fiber": 3
+  },
+  {
+   "id": "in_watermelon",
+   "name": "Watermelon",
+   "aliases": [
+    "Puchakaya",
+    "Tarbooz"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 46,
+   "protein": 0.9,
+   "carbs": 11.5,
+   "fats": 0.2,
+   "fiber": 0.6
+  },
+  {
+   "id": "in_guava",
+   "name": "Guava",
+   "aliases": [
+    "Jama Pandu",
+    "Amrood"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 medium",
+   "servingGrams": 100,
+   "calories": 68,
+   "protein": 2.6,
+   "carbs": 14,
+   "fats": 1,
+   "fiber": 5
+  },
+  {
+   "id": "in_grapes",
+   "name": "Grapes",
+   "aliases": [
+    "Draksha",
+    "Angoor"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1 cup",
+   "servingGrams": 150,
+   "calories": 100,
+   "protein": 1,
+   "carbs": 27,
+   "fats": 0.2,
+   "fiber": 1
+  },
+  {
+   "id": "in_pomegranate",
+   "name": "Pomegranate",
+   "aliases": [
+    "Danimma",
+    "Anar"
+   ],
+   "tags": [
+    "Indian",
+    "Fruits",
+    "Snacks"
+   ],
+   "category": "fruit",
+   "serving": "1/2 cup seeds",
+   "servingGrams": 87,
+   "calories": 72,
+   "protein": 1.5,
+   "carbs": 16,
+   "fats": 1,
+   "fiber": 3.5
+  }
+ ]
+}

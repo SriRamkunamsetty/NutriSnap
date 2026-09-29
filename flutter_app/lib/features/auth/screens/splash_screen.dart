@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
+import '../providers/user_provider.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final error = ref.watch(userNotifierProvider).errorMessage;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -22,7 +25,7 @@ class SplashScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(40),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.green.shade100.withOpacity(0.5),
+                    color: Colors.green.shade100.withValues(alpha: 0.5),
                     blurRadius: 30,
                     offset: const Offset(0, 10),
                   )
@@ -30,7 +33,7 @@ class SplashScreen extends StatelessWidget {
               ),
               child: const Icon(LucideIcons.apple, size: 60, color: Colors.green),
             ).animate()
-              .scale(duration: 600.ms, curve: Curves.backOut)
+              .scale(duration: 600.ms, curve: Curves.easeOutBack)
               .shimmer(delay: 800.ms, duration: 1200.ms),
             const SizedBox(height: 24),
             const Text(
@@ -55,6 +58,17 @@ class SplashScreen extends StatelessWidget {
               ),
             ).animate()
               .fadeIn(delay: 500.ms, duration: 500.ms),
+            if (error != null) ...[
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ],
         ),
       ),

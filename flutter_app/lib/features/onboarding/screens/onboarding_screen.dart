@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/constants/app_routes.dart';
 import '../../../core/models/user_profile.dart';
-import '../../../core/services/storage_service.dart';
+import '../../../core/config/app_config.dart';
+import '../../../core/enums/app_enums.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/firebase_exception_handler.dart';
-import '../../../core/widgets/animated_entry.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../auth/providers/user_provider.dart';
@@ -40,8 +37,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final profile = ref.read(userNotifierProvider).profile;
     
     _nameController = TextEditingController(text: profile?.displayName ?? '');
-    _height = profile?.height ?? 175;
-    _weight = profile?.weight ?? 70;
+    _height = (profile?.height ?? 175).round();
+    _weight = (profile?.weight ?? 70).round();
     _goal = profile?.goal ?? Goal.maintain;
     _calorieLimit = profile?.calorieLimit ?? 2000;
     _proteinGoal = profile?.proteinGoal ?? 150;
@@ -81,27 +78,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       final bmi = _weight / (heightInMeters * heightInMeters);
       final roundedBmi = double.parse(bmi.toStringAsFixed(1));
 
-      final profilePath = UserProfile(
-        uid: ref.read(userNotifierProvider).authUser!.uid,
+      final current = ref.read(userNotifierProvider).profile;
+      final profile = (current ??
+              UserProfile(
+                uid: AppConfig.localUserId,
+                email: '',
+                createdAt: DateTime.now(),
+              ))
+          .copyWith(
         displayName: _nameController.text.trim(),
-        height: _height,
-        weight: _weight,
+        height: _height.toDouble(),
+        weight: _weight.toDouble(),
         bmi: roundedBmi,
         goal: _goal,
         calorieLimit: _calorieLimit,
         proteinGoal: _proteinGoal,
         carbsGoal: _carbsGoal,
         fatsGoal: _fatsGoal,
+        waterGoal: current?.waterGoal ?? 2500,
         hasCompletedOnboarding: true,
+        lastLoginAt: DateTime.now(),
       );
 
-      final storage = ref.read(storageServiceProvider);
-      await storage.saveUserProfile(profilePath);
-
-      // Force Riverpod to update so Router catches the new logic natively
-      await ref.read(userNotifierProvider.notifier).refreshProfile();
+      // Persists to SQLite and updates state; the router then leaves onboarding.
+      await ref.read(userNotifierProvider.notifier).updateProfile(profile);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(FirebaseExceptionHandler.handleException(e, 'Onboarding'))));
+      debugPrint('[Onboarding] save failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save your profile. Please try again.')));
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -307,7 +312,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           onChanged: (val) => _weight = int.tryParse(val) ?? 70,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           decoration: InputDecoration(
-            prefixIcon: const Icon(LucideIcons.weight, color: AppColors.textTertiary),
+            prefixIcon: const Icon(LucideIcons.scale, color: AppColors.textTertiary),
             fillColor: Colors.white,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
           ),
@@ -321,7 +326,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final goalsList = [
       {'id': Goal.lose, 'label': 'Lose Weight', 'desc': 'Burn fat and get leaner', 'icon': LucideIcons.zap, 'color': Colors.orange},
       {'id': Goal.maintain, 'label': 'Maintain', 'desc': 'Stay healthy and balanced', 'icon': LucideIcons.target, 'color': Colors.green},
-      {'id': Goal.gain, 'label': 'Build Muscle', 'desc': 'Gain strength and mass', 'icon': LucideIcons.weight, 'color': Colors.blue},
+      {'id': Goal.gain, 'label': 'Build Muscle', 'desc': 'Gain strength and mass', 'icon': LucideIcons.scale, 'color': Colors.blue},
     ];
 
     return Column(
@@ -348,7 +353,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: isSelected ? color.shade50.withOpacity(0.5) : Colors.white.withOpacity(0.5),
+                    color: isSelected ? color.shade50.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(color: isSelected ? color.shade500 : Colors.white, width: 2),
                     boxShadow: [if (isSelected) BoxShadow(color: color.shade100, blurRadius: 10, spreadRadius: 1)],

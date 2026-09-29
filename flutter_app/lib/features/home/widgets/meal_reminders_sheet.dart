@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/models/reminder.dart';
 import '../../../core/services/reminder_service.dart';
@@ -35,7 +35,7 @@ class MealRemindersCard extends ConsumerWidget {
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -119,7 +119,7 @@ class MealRemindersCard extends ConsumerWidget {
                     margin: const EdgeInsets.symmetric(horizontal: 3),
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                     decoration: BoxDecoration(
-                      color: r.enabled ? Colors.green.shade50.withOpacity(0.5) : AppColors.surfaceMuted,
+                      color: r.enabled ? Colors.green.shade50.withValues(alpha: 0.5) : AppColors.surfaceMuted,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: r.enabled ? Colors.green.shade200 : Colors.transparent,
@@ -190,7 +190,7 @@ class _MealRemindersSheetState extends ConsumerState<MealRemindersSheet> {
     );
 
     if (picked != null) {
-      UiFeedback.selection();
+      UIFeedback.selection();
       final formattedTime =
           '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
       await ref.read(reminderServiceProvider).updateReminderTime(reminder.id, formattedTime);
@@ -273,17 +273,17 @@ class _MealRemindersSheetState extends ConsumerState<MealRemindersSheet> {
                 decoration: BoxDecoration(
                   color: reminder.enabled
                       ? Colors.white
-                      : AppColors.surfaceMuted.withOpacity(0.5),
+                      : AppColors.surfaceMuted.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: reminder.enabled
-                        ? AppColors.primary.withOpacity(0.3)
+                        ? AppColors.primary.withValues(alpha: 0.3)
                         : AppColors.border,
                   ),
                   boxShadow: reminder.enabled
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.06),
+                            color: AppColors.primary.withValues(alpha: 0.06),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           )
@@ -322,9 +322,9 @@ class _MealRemindersSheetState extends ConsumerState<MealRemindersSheet> {
                         ),
                         Switch.adaptive(
                           value: reminder.enabled,
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                           onChanged: (val) {
-                            UiFeedback.selection();
+                            UIFeedback.selection();
                             reminderService.toggleReminder(reminder.id, val);
                           },
                         ),

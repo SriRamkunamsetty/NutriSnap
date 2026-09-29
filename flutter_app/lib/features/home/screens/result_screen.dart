@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/models/scan_result.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/models/daily_summary.dart';
-import '../../../core/services/storage_service.dart';
+import '../../../core/enums/app_enums.dart';
+import '../../../core/providers/app_providers.dart';
+import '../../../core/widgets/scan_image.dart';
+import '../../scan/screens/scan_review_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/animated_entry.dart';
 import '../../auth/providers/user_provider.dart';
@@ -42,7 +45,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     if (_fetchedScan != null || scans.any((s) => s.id == widget.id)) return;
 
     setState(() => _isFetching = true);
-    final scan = await ref.read(storageServiceProvider).getScanResult(widget.id);
+    final scan = await ref.read(scanRepositoryProvider).getById(widget.id);
     if (mounted) {
       setState(() {
         _fetchedScan = scan;
@@ -70,7 +73,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
 
     if (confirm == true && mounted) {
-      await ref.read(storageServiceProvider).deleteScanResult(scan.id, scan);
+      await ref.read(scanRepositoryProvider).delete(scan.id);
       if (mounted) {
         context.go(AppRoutes.home);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scan deleted')));
@@ -81,27 +84,32 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   Future<void> _handleShare(ScanResult scan) async {
     HapticFeedback.lightImpact();
     
-    final shareText = '''
-🍎 NutriSnap Scan: \${scan.foodName}
-
-\${(scan.type == 'food' || (scan.calories > 0)) ? 
-  '🔥 Calories: \${scan.calories} kcal\\n💪 Protein: \${scan.protein}g\\n🍞 Carbs: \${scan.carbs}g\\n💧 Fats: \${scan.fats}g\\n\\n' : 
-  '🤖 AI detected: \${scan.type} (\${scan.details})\\n\\n'}
-Track your journey with NutriSnap!
-''';
+    final isFood = scan.type == 'food' || scan.calories > 0;
+    final shareText = StringBuffer('🍎 NutriSnap: ${scan.foodName}\n\n');
+    if (isFood) {
+      shareText
+        ..writeln('🔥 Calories: ${scan.calories} kcal')
+        ..writeln('💪 Protein: ${scan.protein} g')
+        ..writeln('🍞 Carbs: ${scan.carbs} g')
+        ..writeln('💧 Fats: ${scan.fats} g');
+    } else {
+      shareText.writeln('🤖 AI detected: ${scan.type} (${scan.details ?? ''})');
+    }
+    shareText.write('\nTracked privately with NutriSnap AI');
 
     try {
-      await Clipboard.setData(ClipboardData(text: shareText));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard!')));
+      await SharePlus.instance.share(ShareParams(text: shareText.toString()));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to copy to clipboard')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open the share sheet')));
+      }
     }
   }
 
   String? _getPersonalizedTip(UserProfile? profile, DailySummary? dailySummary, ScanResult scan) {
     if (profile == null || dailySummary == null || scan.type != 'food') return null;
 
-    final remainingCalories = (profile.calorieLimit) - dailySummary.totalCalories;
+    final remainingCalories = (profile.calorieLimit ?? 2000) - dailySummary.totalCalories;
     final isOverLimit = remainingCalories < 0;
     
     String tip = "";
@@ -139,20 +147,12 @@ Track your journey with NutriSnap!
     return tip.isNotEmpty ? tip : null;
   }
 
-  void _showEditModal(ScanResult scan) {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Edit Modal',
-      pageBuilder: (context, anim1, anim2) => _EditLogModal(
-        scan: scan,
-        onLogSubmit: (updatedScan) async {
-          Navigator.of(context).pop();
-          await ref.read(storageServiceProvider).updateScanResult(updatedScan);
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scan updated!')));
-        },
-      ),
-    );
+  Future<void> _showEditModal(ScanResult scan) async {
+    // Same editor as the scan review: edit foods, portions and nutrition.
+    await context.push(AppRoutes.scanReview, extra: ScanReviewArgs.edit(scan));
+    if (!mounted) return;
+    final fresh = await ref.read(scanRepositoryProvider).getById(scan.id);
+    if (mounted && fresh != null) setState(() => _fetchedScan = fresh);
   }
 
   @override
@@ -207,7 +207,7 @@ Track your journey with NutriSnap!
             const SizedBox(height: 32),
             const Text('Scan Not Found', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
-            const Text('We couldn\\'t find the details for this scan. It might have been deleted.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
+            const Text('We couldn\'t find the details for this scan. It might have been deleted.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () => context.go(AppRoutes.home),
@@ -236,10 +236,7 @@ Track your journey with NutriSnap!
               children: [
                 ClipPath(
                   clipper: _CurveClipper(),
-                  child: CachedNetworkImage(
-                    imageUrl: scan.imageUrl ?? 'https://picsum.photos/seed/food/400/400',
-                    fit: BoxFit.cover,
-                  ),
+                  child: ScanImage(path: scan.imageUrl),
                 ),
                 ClipPath(
                   clipper: _CurveClipper(),
@@ -248,7 +245,7 @@ Track your journey with NutriSnap!
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [Colors.black.withOpacity(0.8), Colors.black.withOpacity(0.2), Colors.transparent],
+                        colors: [Colors.black.withValues(alpha: 0.8), Colors.black.withValues(alpha: 0.2), Colors.transparent],
                       )
                     ),
                   ),
@@ -260,7 +257,7 @@ Track your journey with NutriSnap!
                         top: 16, left: 16,
                         child: InkWell(
                           onTap: () => context.go(AppRoutes.home),
-                          child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.3))), child: const Icon(LucideIcons.chevronLeft, color: Colors.white)),
+                          child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.3))), child: const Icon(LucideIcons.chevronLeft, color: Colors.white)),
                         )
                       ),
                       Positioned(
@@ -269,12 +266,12 @@ Track your journey with NutriSnap!
                           children: [
                             InkWell(
                               onTap: () => _handleShare(scan),
-                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.3))), child: const Icon(LucideIcons.share2, color: Colors.white, size: 20)),
+                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: 0.3))), child: const Icon(LucideIcons.share2, color: Colors.white, size: 20)),
                             ),
                             const SizedBox(width: 12),
                             InkWell(
                               onTap: () => _handleDelete(scan),
-                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.red.withOpacity(0.4), shape: BoxShape.circle, border: Border.all(color: Colors.red.withOpacity(0.3))), child: const Icon(LucideIcons.trash2, color: Colors.white, size: 20)),
+                              child: Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.4), shape: BoxShape.circle, border: Border.all(color: Colors.red.withValues(alpha: 0.3))), child: const Icon(LucideIcons.trash2, color: Colors.white, size: 20)),
                             ),
                           ],
                         )
@@ -294,12 +291,12 @@ Track your journey with NutriSnap!
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withOpacity(0.3))),
+                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withValues(alpha: 0.3))),
                                   child: Row(
                                     children: [
-                                      Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(2)), child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: scan.confidence, child: Container(decoration: BoxDecoration(color: Colors.greenAccent, borderRadius: BorderRadius.circular(2))))),
+                                      Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)), child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: scan.confidence, child: Container(decoration: BoxDecoration(color: Colors.greenAccent, borderRadius: BorderRadius.circular(2))))),
                                       const SizedBox(width: 8),
-                                      Text('\${(scan.confidence * 100).round()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
+                                      Text('${(scan.confidence * 100).round()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
                                     ],
                                   ),
                                 ),
@@ -326,17 +323,17 @@ Track your journey with NutriSnap!
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))]),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))]),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildQuickMacro(scan.calories.toString(), 'Calories', AppColors.textPrimary),
                       Container(width: 1, height: 32, color: AppColors.border),
-                      _buildQuickMacro('\${scan.protein}g', 'Protein', Colors.blue.shade600),
+                      _buildQuickMacro('${scan.protein}g', 'Protein', Colors.blue.shade600),
                       Container(width: 1, height: 32, color: AppColors.border),
-                      _buildQuickMacro('\${scan.carbs}g', 'Carbs', Colors.orange.shade600),
+                      _buildQuickMacro('${scan.carbs}g', 'Carbs', Colors.orange.shade600),
                       Container(width: 1, height: 32, color: AppColors.border),
-                      _buildQuickMacro('\${scan.fats}g', 'Fats', Colors.purple.shade600),
+                      _buildQuickMacro('${scan.fats}g', 'Fats', Colors.purple.shade600),
                     ],
                   ),
                 ),
@@ -351,15 +348,15 @@ Track your journey with NutriSnap!
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))]),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10))]),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildQuickMacroCat(scan.type, 'Category', LucideIcons.fingerprint, Colors.blue),
+                      _buildQuickMacroCat(scan.type ?? 'other', 'Category', LucideIcons.fingerprint, Colors.blue),
                       Container(width: 1, height: 32, color: AppColors.border),
                       _buildQuickMacroCat(scan.details ?? 'Unknown', 'Details', LucideIcons.checkCircle, Colors.green),
                       Container(width: 1, height: 32, color: AppColors.border),
-                      _buildQuickMacroCat('\${(scan.confidence * 100).round()}%', 'Confidence', LucideIcons.flame, Colors.orange),
+                      _buildQuickMacroCat('${(scan.confidence * 100).round()}%', 'Confidence', LucideIcons.flame, Colors.orange),
                     ],
                   ),
                 ),
@@ -377,7 +374,7 @@ Track your journey with NutriSnap!
                     child: OutlinedButton.icon(
                       onPressed: () => _showEditModal(scan),
                       icon: const Icon(LucideIcons.edit2, size: 16),
-                      label: const Text('Edit / Correct Values'),
+                      label: const Text('Edit foods & portions'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -387,6 +384,10 @@ Track your journey with NutriSnap!
                     ),
                   ),
 
+                if (isFood && scan.items.isNotEmpty) ...[
+                  _buildFoodsCard(scan),
+                  const SizedBox(height: 24),
+                ],
                 if (isFood) _buildDetailedMacros(scan),
                 if (isFood && profile != null) ...[
                   const SizedBox(height: 24),
@@ -411,8 +412,8 @@ Track your journey with NutriSnap!
                       const SizedBox(height: 24),
                       if (isFood) ...[
                          Text(
-                          'This meal is \${scan.protein > 20 ? 'excellent for muscle recovery due to its high protein content' : 'a balanced choice for your daily intake'}. '
-                          '\${scan.calories > 800 ? ' It is quite calorie-dense, so consider balancing your next meal with lighter options.' : ' It fits perfectly within your daily calorie budget.'}',
+                          'This meal is ${scan.protein > 20 ? 'excellent for muscle recovery due to its high protein content' : 'a balanced choice for your daily intake'}. '
+                          '${scan.calories > 800 ? ' It is quite calorie-dense, so consider balancing your next meal with lighter options.' : ' It fits perfectly within your daily calorie budget.'}',
                           style: const TextStyle(fontSize: 16, color: AppColors.textSecondary, height: 1.5, fontWeight: FontWeight.w500),
                         ),
                         if (tip != null) ...[
@@ -429,7 +430,7 @@ Track your journey with NutriSnap!
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(32), border: Border.all(color: AppColors.border)),
-                          child: Text('"\${scan.description}"', style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.textSecondary, height: 1.5)),
+                          child: Text('"${scan.description}"', style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.textSecondary, height: 1.5)),
                         ),
                       ]
                     ],
@@ -455,6 +456,55 @@ Track your journey with NutriSnap!
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFoodsCard(ScanResult scan) {
+    String amount(double v) => v == v.roundToDouble() ? v.round().toString() : v.toStringAsFixed(1);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            scan.items.length == 1 ? 'FOOD' : 'FOODS IN THIS MEAL',
+            style: const TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textTertiary, letterSpacing: 1),
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < scan.items.length; i++) ...[
+            if (i > 0) const Divider(height: 20, color: AppColors.border),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(scan.items[i].name,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text(
+                        scan.items[i].source == 'manual' && scan.items[i].servingUnit == 'serving'
+                            ? 'P ${amount(scan.items[i].protein)} · C ${amount(scan.items[i].carbs)} · F ${amount(scan.items[i].fats)} g'
+                            : '${amount(scan.items[i].estimatedWeight)} ${scan.items[i].servingUnit}  ·  P ${amount(scan.items[i].protein)} · C ${amount(scan.items[i].carbs)} · F ${amount(scan.items[i].fats)} g',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Text('${scan.items[i].calories.round()} kcal',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textPrimary)),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -500,12 +550,12 @@ Track your journey with NutriSnap!
 
   Widget _buildGoalImpactCard(ScanResult scan, UserProfile profile, DailySummary? dailySummary) {
     final dailyCals = dailySummary?.totalCalories ?? 0;
-    final limitCals = profile.calorieLimit;
+    final limitCals = profile.calorieLimit ?? 2000;
     final isOver = dailyCals > limitCals;
 
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: isOver ? Colors.red.shade50.withOpacity(0.3) : Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: isOver ? Colors.red.shade200 : AppColors.border)),
+      decoration: BoxDecoration(color: isOver ? Colors.red.shade50.withValues(alpha: 0.3) : Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: isOver ? Colors.red.shade200 : AppColors.border)),
       child: Column(
         children: [
           Row(
@@ -546,11 +596,11 @@ Track your journey with NutriSnap!
             ),
           ],
           const SizedBox(height: 24),
-          _buildImpactRow('Protein', scan.protein, dailySummary?.totalProtein ?? 0, profile.proteinGoal, Colors.blue),
+          _buildImpactRow('Protein', scan.protein, dailySummary?.totalProtein ?? 0, profile.proteinGoal ?? 0, Colors.blue),
           const SizedBox(height: 16),
-          _buildImpactRow('Carbs', scan.carbs, dailySummary?.totalCarbs ?? 0, profile.carbsGoal, Colors.orange),
+          _buildImpactRow('Carbs', scan.carbs, dailySummary?.totalCarbs ?? 0, profile.carbsGoal ?? 0, Colors.orange),
           const SizedBox(height: 16),
-          _buildImpactRow('Fats', scan.fats, dailySummary?.totalFats ?? 0, profile.fatsGoal, Colors.purple),
+          _buildImpactRow('Fats', scan.fats, dailySummary?.totalFats ?? 0, profile.fatsGoal ?? 0, Colors.purple),
         ],
       ),
     );
@@ -576,7 +626,7 @@ Track your journey with NutriSnap!
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('\${(percTotal * 100).round()}% of goal', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: (percTotal >= 1.0) ? Colors.blue.shade600 : Colors.green.shade600)),
+                Text('${(percTotal * 100).round()}% of goal', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: (percTotal >= 1.0) ? Colors.blue.shade600 : Colors.green.shade600)),
                 Text('$currentTotal / $goal g', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: AppColors.textTertiary)),
               ],
             ),
@@ -631,103 +681,4 @@ class _CurveClipper extends CustomClipper<Path> {
   }
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
-// ---------------------------------------------------------
-// EDIT MODAL 
-// ---------------------------------------------------------
-class _EditLogModal extends StatefulWidget {
-  final ScanResult scan;
-  final Function(ScanResult) onLogSubmit;
-  const _EditLogModal({required this.scan, required this.onLogSubmit});
-
-  @override
-  State<_EditLogModal> createState() => _EditLogModalState();
-}
-
-class _EditLogModalState extends State<_EditLogModal> {
-  late TextEditingController _nameCtrl;
-  late TextEditingController _calCtrl;
-  late TextEditingController _proCtrl;
-  late TextEditingController _carbCtrl;
-  late TextEditingController _fatCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameCtrl = TextEditingController(text: widget.scan.foodName);
-    _calCtrl = TextEditingController(text: widget.scan.calories.toString());
-    _proCtrl = TextEditingController(text: widget.scan.protein.toString());
-    _carbCtrl = TextEditingController(text: widget.scan.carbs.toString());
-    _fatCtrl = TextEditingController(text: widget.scan.fats.toString());
-  }
-
-  void _submit() {
-    if (_nameCtrl.text.trim().isEmpty) return;
-    
-    final updated = widget.scan.copyWith(
-      foodName: _nameCtrl.text.trim(),
-      calories: int.tryParse(_calCtrl.text) ?? widget.scan.calories,
-      protein: int.tryParse(_proCtrl.text) ?? widget.scan.protein,
-      carbs: int.tryParse(_carbCtrl.text) ?? widget.scan.carbs,
-      fats: int.tryParse(_fatCtrl.text) ?? widget.scan.fats,
-    );
-    
-    widget.onLogSubmit(updated);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).pop(),
-      child: Scaffold(
-        backgroundColor: Colors.black.withOpacity(0.4),
-        body: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Center(
-            child: GestureDetector(
-              onTap: () {}, 
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40)),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Edit Meal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
-                        IconButton(onPressed: () => Navigator.of(context).pop(), icon: const Icon(LucideIcons.x, color: AppColors.textTertiary)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    TextField(controller: _nameCtrl, decoration: InputDecoration(labelText: 'Meal Name', filled: true, fillColor: AppColors.surfaceMuted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none))),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: _calCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Calories', filled: true, fillColor: AppColors.surfaceMuted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)))),
-                        const SizedBox(width: 16),
-                        Expanded(child: TextField(controller: _proCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Protein (g)', filled: true, fillColor: AppColors.surfaceMuted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)))),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: _carbCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Carbs (g)', filled: true, fillColor: AppColors.surfaceMuted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)))),
-                        const SizedBox(width: 16),
-                        Expanded(child: TextField(controller: _fatCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Fats (g)', filled: true, fillColor: AppColors.surfaceMuted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none)))),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(width: double.infinity, height: 56, child: ElevatedButton(onPressed: _submit, style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))), child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)))),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

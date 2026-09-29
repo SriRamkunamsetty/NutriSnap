@@ -69,14 +69,14 @@ class UserProfile extends Equatable {
       fatEstimate: (map['fatEstimate'] as num?)?.toDouble(),
       bodyScanURL: map['bodyScanURL'] as String?,
       goal: GoalExtension.fromString(map['goal'] as String?),
-      calorieLimit: map['calorieLimit'] as int?,
-      proteinGoal: map['proteinGoal'] as int?,
-      carbsGoal: map['carbsGoal'] as int?,
-      fatsGoal: map['fatsGoal'] as int?,
+      calorieLimit: (map['calorieLimit'] as num?)?.round(),
+      proteinGoal: (map['proteinGoal'] as num?)?.round(),
+      carbsGoal: (map['carbsGoal'] as num?)?.round(),
+      fatsGoal: (map['fatsGoal'] as num?)?.round(),
       proteinPct: (map['proteinPct'] as num?)?.toDouble(),
       carbsPct: (map['carbsPct'] as num?)?.toDouble(),
       fatsPct: (map['fatsPct'] as num?)?.toDouble(),
-      waterGoal: map['waterGoal'] as int?,
+      waterGoal: (map['waterGoal'] as num?)?.round(),
       reminders: (map['reminders'] as List<dynamic>?)
           ?.map((e) => Reminder.fromMap(e as Map<String, dynamic>))
           .toList(),
@@ -111,8 +111,8 @@ class UserProfile extends Equatable {
       if (reminders != null) 'reminders': reminders!.map((x) => x.toMap()).toList(),
       if (theme != null) 'theme': theme!.name,
       if (hasCompletedOnboarding != null) 'hasCompletedOnboarding': hasCompletedOnboarding,
-      'createdAt': DateTimeUtils.toTimestamp(createdAt),
-      if (lastLoginAt != null) 'lastLoginAt': DateTimeUtils.toTimestamp(lastLoginAt),
+      'createdAt': DateTimeUtils.toIso(createdAt),
+      if (lastLoginAt != null) 'lastLoginAt': DateTimeUtils.toIso(lastLoginAt),
     };
   }
 

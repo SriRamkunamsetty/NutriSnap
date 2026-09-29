@@ -4,15 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/models/user_profile.dart';
 import '../../../core/models/scan_result.dart';
 import '../../../core/enums/app_enums.dart';
-import '../../../core/services/storage_service.dart';
-import '../../../core/services/gemini_service.dart';
+import '../../../core/ai/ai_models.dart';
+import '../../../core/providers/app_providers.dart';
+import '../../../core/services/image_store.dart';
+import '../../../core/widgets/ai_model_card.dart';
+import '../widgets/data_privacy_section.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/ui_feedback.dart';
 import '../../../core/providers/unsaved_changes_provider.dart';
@@ -33,7 +35,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isAnalyzing = false;
   bool _isUploadingProfile = false;
   bool _isClearing = false;
-  bool _isGeneratingReport = false;
   bool _showReportSuccess = false;
   bool _showBodyScanSuccess = false;
 
@@ -214,9 +215,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
       ref.read(unsavedChangesProvider.notifier).state = false;
       
-      UIFeedback.showSuccess(context, 'Profile updated successfully');
+      if (mounted) UIFeedback.showSuccess(context, 'Profile updated successfully');
     } catch (_) {
-      UIFeedback.showError(context, 'Failed to update profile. Please try again.');
+      if (mounted) UIFeedback.showError(context, 'Failed to update profile. Please try again.');
     }
   }
 
@@ -226,23 +227,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     setState(() => _isUploadingProfile = true);
     HapticFeedback.mediumImpact();
-    UIFeedback.showInfo(context, 'Saving profile photo...');
+    if (mounted) UIFeedback.showInfo(context, 'Saving profile photo...');
 
     try {
-      final storageService = ref.read(storageServiceProvider);
-      final url = await storageService.uploadProfileImage(File(image.path));
-      
+      final images = ref.read(imageStoreProvider);
+      final rel = await images.saveFile(File(image.path), ImageKind.profile);
+
       final currentProfile = ref.read(userNotifierProvider).profile;
       if (currentProfile != null) {
-        final updated = currentProfile.copyWith(photoURL: url);
+        final oldRel = images.relativize(currentProfile.photoURL);
+        final updated = currentProfile.copyWith(photoURL: images.absolutePath(rel));
         _localProfileCache = updated;
         await ref.read(userNotifierProvider.notifier).updateProfile(updated);
+        await images.delete(oldRel); // do not leak the previous photo
       }
-      
-      UIFeedback.showSuccess(context, 'Profile photo updated & stored!');
+
+      if (mounted) UIFeedback.showSuccess(context, 'Profile photo updated');
     } catch (e) {
       debugPrint('[SettingsScreen] Profile photo upload failed: $e');
-      UIFeedback.showError(context, 'Failed to save profile photo.');
+      if (mounted) UIFeedback.showError(context, 'Failed to save profile photo.');
     } finally {
       if (mounted) setState(() => _isUploadingProfile = false);
     }
@@ -306,54 +309,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _handleBodyImageChange() async {
+     if (!ref.read(gemmaModelProvider).isInstalled) {
+       await showAiModelSheet(context);
+       return;
+     }
      final XFile? image = await _picker.pickImage(source: ImageSource.camera, maxWidth: 1024, maxHeight: 1024, imageQuality: 70);
      if (image == null) return;
 
      setState(() => _isAnalyzing = true);
      HapticFeedback.mediumImpact();
-     UIFeedback.showInfo(context, 'Analyzing body scan...');
+     if (mounted) UIFeedback.showInfo(context, 'Analyzing body scan...');
 
      try {
-       final storageService = ref.read(storageServiceProvider);
-       final geminiService = ref.read(geminiServiceProvider);
-       
+       final images = ref.read(imageStoreProvider);
        final bytes = await image.readAsBytes();
-       // Use geminiService.analyzeBodyImage -> returns {bodyType, fatEstimate}
-       final analysis = await geminiService.analyzeBodyImage(bytes, 'image/jpeg');
-       
-       final bodyScanURL = await storageService.uploadBodyImage(File(image.path));
-       
-       // Update Profile
        final currentProfile = ref.read(userNotifierProvider).profile;
+
+       final analysis = await ref.read(nutritionAiProvider).analyzeBody(bytes, profile: currentProfile);
+
+       final rel = await images.saveBytes(bytes, ImageKind.body);
+       final bodyScanPath = images.absolutePath(rel);
+
        if (currentProfile != null) {
+         final oldRel = images.relativize(currentProfile.bodyScanURL);
          await ref.read(userNotifierProvider.notifier).updateProfile(
            currentProfile.copyWith(
-             bodyType: BodyTypeExtension.fromString(analysis['bodyType'] as String?),
-             fatEstimate: (analysis['fatEstimate'] as num?)?.toDouble() ?? 0.0,
-             bodyScanURL: bodyScanURL,
+             bodyType: analysis.bodyType,
+             fatEstimate: analysis.fatEstimate,
+             bodyScanURL: bodyScanPath,
            )
          );
+         await images.delete(oldRel);
        }
 
-       // Save to History
-       final scan = ScanResult(
+       // Keep a history entry so the body-fat trend chart has data over time.
+       await ref.read(scanRepositoryProvider).add(ScanResult(
          id: '',
          userId: '',
          foodName: 'Body Scan',
          type: 'person',
-         description: 'Body Type: \${analysis["bodyType"]}, Fat Estimate: \${analysis["fatEstimate"]}%',
+         description: 'Body type: ${analysis.bodyType.name}, est. body fat ${analysis.fatEstimate}%'
+             '${analysis.observations.isEmpty ? '' : '. ${analysis.observations}'}',
          calories: 0,
          protein: 0,
          carbs: 0,
          fats: 0,
-         fatEstimate: (analysis['fatEstimate'] as num?)?.toDouble() ?? 0.0,
+         fatEstimate: analysis.fatEstimate,
          confidence: 1.0,
-         imageUrl: bodyScanURL,
+         imageUrl: bodyScanPath,
          timestamp: DateTime.now().toIso8601String(),
-       );
-       await storageService.saveScanResult(scan);
+       ));
 
-       UIFeedback.showSuccess(context, 'Body scan complete!');
+       if (mounted) UIFeedback.showSuccess(context, 'Body scan complete!');
 
        setState(() {
          _showBodyScanSuccess = true;
@@ -364,8 +371,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
          if (mounted) setState(() => _showBodyScanSuccess = false);
        });
 
+     } on AiException catch (e) {
+       if (mounted) {
+         UIFeedback.showError(context, e.message);
+         if (e.needsModel) await showAiModelSheet(context);
+       }
      } catch (_) {
-       UIFeedback.showError(context, 'Body analysis failed. Please try again.');
+       if (mounted) UIFeedback.showError(context, 'Body analysis failed. Please try again.');
      } finally {
        if (mounted) setState(() => _isAnalyzing = false);
      }
@@ -375,21 +387,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _isClearing = true);
     HapticFeedback.mediumImpact();
     try {
-      await ref.read(storageServiceProvider).clearChatHistory();
+      await ref.read(chatRepositoryProvider).clear();
       if (mounted) Navigator.of(context).pop(); // Close dialog
-      UIFeedback.showSuccess(context, 'Chat history cleared.');
+      if (mounted) UIFeedback.showSuccess(context, 'Chat history cleared.');
     } catch (_) {
-       UIFeedback.showError(context, 'Failed to clear chat history.');
+       if (mounted) UIFeedback.showError(context, 'Failed to clear chat history.');
     } finally {
       if (mounted) setState(() => _isClearing = false);
     }
-  }
-
-  Future<void> _handleSignOut() async {
-     HapticFeedback.mediumImpact();
-     try {
-       await ref.read(userNotifierProvider.notifier).signOut();
-     } catch (_) {}
   }
 
   void _showClearChatDialog() {
@@ -423,7 +428,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildTextField(String label, IconData icon, String value, Function(String) onChanged, {TextInputType type = TextInputType.text}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -480,7 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             borderRadius: BorderRadius.circular(32),
                             child: Container(
                               width: 96, height: 96,
-                              decoration: BoxDecoration(color: Colors.green.shade500, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white, width: 4), boxShadow: [BoxShadow(color: Colors.green.shade500.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))]),
+                              decoration: BoxDecoration(color: Colors.green.shade500, borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white, width: 4), boxShadow: [BoxShadow(color: Colors.green.shade500.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))]),
                               clipBehavior: Clip.hardEdge,
                               child: Stack(
                                 fit: StackFit.expand,
@@ -499,7 +504,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Text(userState.authUser?.email ?? 'private.user@on-device.local', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                    Text('Stored only on this device', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -535,7 +540,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 // 2. Health Metrics Card
                 Container(
                   padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -615,7 +620,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                  children: [
                                    const Text('BODY TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiary, letterSpacing: 1.0)),
                                    const SizedBox(height: 4),
-                                   Text((profile?.bodyType ?? 'Unknown').toUpperCase(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                   Text((profile?.bodyType?.name ?? 'unknown').toUpperCase(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                                  ],
                                ),
                              ),
@@ -629,7 +634,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                  children: [
                                    const Text('FAT ESTIMATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiary, letterSpacing: 1.0)),
                                    const SizedBox(height: 4),
-                                   Text(profile?.fatEstimate != null && profile!.fatEstimate! > 0 ? '\${profile.fatEstimate}%' : '--', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                   Text(profile?.fatEstimate != null && profile!.fatEstimate! > 0 ? '${profile.fatEstimate}%' : '--', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                                  ],
                                ),
                              ),
@@ -748,7 +753,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         SliderTheme(
-                          data: SliderThemeData(activeTrackColor: Colors.green.shade600, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: Colors.green.shade600, overlayColor: Colors.green.shade600.withOpacity(0.2)),
+                          data: SliderThemeData(activeTrackColor: Colors.green.shade600, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: Colors.green.shade600, overlayColor: Colors.green.shade600.withValues(alpha: 0.2)),
                           child: Slider(
                             value: _calorieLimit.toDouble().clamp(1000, 5000),
                             min: 1000, max: 5000, divisions: 80,
@@ -816,7 +821,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         SliderTheme(
-                          data: SliderThemeData(activeTrackColor: Colors.blue.shade600, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: Colors.blue.shade600, overlayColor: Colors.blue.shade600.withOpacity(0.2)),
+                          data: SliderThemeData(activeTrackColor: Colors.blue.shade600, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: Colors.blue.shade600, overlayColor: Colors.blue.shade600.withValues(alpha: 0.2)),
                           child: Slider(
                             value: _waterGoal.toDouble().clamp(500, 10000),
                             min: 500, max: 10000, divisions: 38,
@@ -874,7 +879,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   // Nutritional Goals Read-Only Summary
                   Container(
                     padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
                     child: Column(
                       children: [
                         Row(
@@ -915,55 +920,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const MealRemindersCard(),
                   const SizedBox(height: 32),
 
-                  // Health Report Section
-                  Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(16)), child: Icon(LucideIcons.fileText, color: Colors.blue.shade600, size: 20)),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Health Report', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary)),
-                                const Text('EXPORT YOUR DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiary, letterSpacing: 1.0)),
-                              ],
-                            )
-                          ]
-                        ),
-                        const SizedBox(height: 16),
-                        const Text('Generate a comprehensive PDF report of your nutrition, scans, and health trends.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          onPressed: _isGeneratingReport ? null : () async {
-                             setState(() => _isGeneratingReport = true);
-                             HapticFeedback.mediumImpact();
-                             await Future.delayed(const Duration(seconds: 2)); // Mock generation
-                             setState(() { _isGeneratingReport = false; _showReportSuccess = true; });
-                             HapticFeedback.lightImpact();
-                             Future.delayed(const Duration(seconds: 4), () { if(mounted) setState(() => _showReportSuccess = false); });
-                          },
-                          icon: _isGeneratingReport ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(LucideIcons.fileText, size: 20),
-                          label: Text(_isGeneratingReport ? 'Generating Report...' : 'Download Health Report (PDF)'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade600, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 56), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0),
-                        )
-                      ],
-                    ),
-                  ),
+                  const DataPrivacySection(),
                   const SizedBox(height: 24),
-                  
-                  // Sign Out
-                  ElevatedButton.icon(
-                    onPressed: _handleSignOut,
-                    icon: const Icon(LucideIcons.logOut, size: 20),
-                    label: const Text('Sign Out'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.red.shade500, minimumSize: const Size(double.infinity, 64), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)), elevation: 0, side: const BorderSide(color: AppColors.border)),
-                  ),
-                  const SizedBox(height: 16),
 
                   // Clear Chat History
                   TextButton.icon(
@@ -986,7 +944,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                  decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
                  child: Row(
                    children: [
-                     Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.fileText, color: Colors.white, size: 18)),
+                     Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.fileText, color: Colors.white, size: 18)),
                      const SizedBox(width: 12),
                      const Text('Report downloaded successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                    ],
@@ -1003,7 +961,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                    decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
                    child: Row(
                      children: [
-                       Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 18)),
+                       Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 18)),
                        const SizedBox(width: 12),
                        const Expanded(child: Text('Scan Successful! Data Updated', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14))),
                      ],
@@ -1035,7 +993,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 8),
         SliderTheme(
-          data: SliderThemeData(activeTrackColor: color, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: color, overlayColor: color.withOpacity(0.2)),
+          data: SliderThemeData(activeTrackColor: color, inactiveTrackColor: AppColors.surfaceMuted, thumbColor: color, overlayColor: color.withValues(alpha: 0.2)),
           child: Slider(value: pct.toDouble().clamp(0, 100), min: 0, max: 100, onChanged: onChanged),
         )
       ],
@@ -1047,10 +1005,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: color.shade50.withOpacity(0.5), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
+      decoration: BoxDecoration(color: color.shade50.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
       child: Column(
         children: [
-          Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 16, color: color.shade500)),
+          Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 16, color: color.shade500)),
           const SizedBox(height: 12),
           Text(label.toUpperCase(), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.0)),
           const SizedBox(height: 4),
@@ -1059,7 +1017,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 12),
           Container(
              height: 6,
-             decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), borderRadius: BorderRadius.circular(3)),
+             decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(3)),
              child: LayoutBuilder(
                builder: (context, constraints) {
                  return Stack(

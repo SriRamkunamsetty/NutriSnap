@@ -2,13 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
+import '../../../core/models/activity.dart';
 import '../../../core/models/scan_result.dart';
+import '../../../core/widgets/ios_kit.dart';
 import '../../../core/theme/app_colors.dart';
-import '../providers/user_provider.dart';
+import '../../../core/widgets/scan_image.dart';
+import '../../../core/providers/app_providers.dart';
+
+/// Breakfast / lunch / snack / dinner by the time the meal was logged.
+String mealPeriodOf(DateTime t) {
+  if (t.hour < 11) return 'breakfast';
+  if (t.hour < 15) return 'lunch';
+  if (t.hour < 18) return 'snack';
+  return 'dinner';
+}
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -23,8 +34,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   String? _startDate;
   String? _endDate;
   String _selectedType = 'all';
-  bool _isFiltering = false;
+  String _period = 'all';
+  String _mode = 'meals';
+  int _visible = _pageSize;
   Timer? _debounceTimer;
+
+  static const int _pageSize = 30;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -36,15 +51,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   void _onSearchChanged(String query) {
-    setState(() {
-      _searchQuery = query;
-      _isFiltering = true;
-    });
-
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 250), () {
       if (mounted) {
-        setState(() => _isFiltering = false);
+        setState(() {
+          _searchQuery = query.trim();
+          _visible = _pageSize;
+        });
       }
     });
   }
@@ -53,12 +66,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     HapticFeedback.lightImpact();
     setState(() {
       _selectedType = type;
-      _isFiltering = true;
-    });
-
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _isFiltering = false);
+      _visible = _pageSize;
     });
   }
 
@@ -68,12 +76,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       _startDate = null;
       _endDate = null;
       _selectedType = 'all';
-      _isFiltering = true;
-    });
-
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _isFiltering = false);
+      _period = 'all';
+      _visible = _pageSize;
     });
   }
 
@@ -102,20 +106,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         } else {
           _endDate = formattedDate;
         }
-        _isFiltering = true;
-      });
-
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-        if (mounted) setState(() => _isFiltering = false);
+        _visible = _pageSize;
       });
     }
   }
 
   List<ScanResult> _getFilteredScans(List<ScanResult> scans) {
     return scans.where((item) {
-      final matchesSearch = item.foodName.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesType = _selectedType == 'all' || item.type == _selectedType;
+      final q = _searchQuery.toLowerCase();
+      final matchesSearch = q.isEmpty ||
+          item.foodName.toLowerCase().contains(q) ||
+          item.items.any((i) => i.name.toLowerCase().contains(q));
+      final matchesType = (_selectedType == 'all' || item.type == _selectedType) && _matchesPeriod(item);
 
       if (_startDate == null && _endDate == null) return matchesSearch && matchesType;
 
@@ -132,6 +134,12 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     }).toList();
   }
 
+  bool _matchesPeriod(ScanResult item) {
+    if (_period == 'all') return true;
+    final t = DateTime.tryParse(item.timestamp);
+    return t != null && item.isFood && mealPeriodOf(t) == _period;
+  }
+
   Map<String, List<ScanResult>> _groupScans(List<ScanResult> filteredScans) {
     final Map<String, List<ScanResult>> grouped = {};
     for (var item in filteredScans) {
@@ -146,8 +154,23 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     return grouped;
   }
 
+  Widget _modeSwitch() => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        child: Segmented<String>(
+          value: _mode,
+          options: const {'meals': 'Meals', 'activity': 'Workouts'},
+          onChanged: (v) => setState(() => _mode = v),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    if (_mode == 'activity') {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(child: Column(children: [_modeSwitch(), const Expanded(child: _WorkoutHistory())])),
+      );
+    }
     final scansAsync = ref.watch(scanHistoryStreamProvider);
 
     return Scaffold(
@@ -155,11 +178,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       body: SafeArea(
         child: scansAsync.when(
           data: (scans) {
-            final filteredScans = _getFilteredScans(scans);
+            final allFiltered = _getFilteredScans(scans);
+            final filteredScans = allFiltered.take(_visible).toList();
+            final hasMore = allFiltered.length > filteredScans.length;
             final groupedHistory = _groupScans(filteredScans);
 
             return CustomScrollView(
               slivers: [
+                SliverToBoxAdapter(child: _modeSwitch()),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -196,14 +222,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            _buildFilterButton(LucideIcons.calendar, _startDate != null, () => _selectDate(context, true)),
+                            _buildFilterButton(LucideIcons.calendar, _startDate != null, () => _selectDate(context, true), 'Start date'),
                             const SizedBox(width: 8),
-                            _buildFilterButton(LucideIcons.calendar, _endDate != null, () => _selectDate(context, false)),
+                            _buildFilterButton(LucideIcons.calendar, _endDate != null, () => _selectDate(context, false), 'End date'),
                             const SizedBox(width: 8),
                             _buildFilterButton(LucideIcons.filter, _showFilters, () {
                               HapticFeedback.lightImpact();
                               setState(() => _showFilters = !_showFilters);
-                            }),
+                            }, 'Filters'),
                           ],
                         ),
                         
@@ -226,7 +252,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                         const Text('ADVANCED FILTERS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                                       ],
                                     ),
-                                    if (_startDate != null || _endDate != null || _selectedType != 'all')
+                                    if (_startDate != null || _endDate != null || _selectedType != 'all' || _period != 'all')
                                       InkWell(
                                         onTap: _clearFilters,
                                         child: Container(
@@ -257,14 +283,46 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                         color: _selectedType == type ? Colors.green.shade600 : Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(color: _selectedType == type ? Colors.green.shade600 : AppColors.border),
-                                        boxShadow: _selectedType == type ? [BoxShadow(color: Colors.green.shade600.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
+                                        boxShadow: _selectedType == type ? [BoxShadow(color: Colors.green.shade600.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))] : [],
                                       ),
                                       child: Text(type.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: _selectedType == type ? Colors.white : AppColors.textTertiary, letterSpacing: 1.0)),
                                     ),
                                   )).toList(),
                                 ),
                                 const SizedBox(height: 24),
-                                const Text('QUICK DATE RANGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
+                                const Text('MEAL TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: ['all', 'breakfast', 'lunch', 'snack', 'dinner'].map((p) => Semantics(
+                    button: true,
+                    selected: _period == p,
+                    label: p == 'all' ? 'All meal times' : p,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _period = p;
+                          _visible = _pageSize;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 44),
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _period == p ? Colors.green.shade600 : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _period == p ? Colors.green.shade600 : AppColors.border),
+                        ),
+                        child: Text(p.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: _period == p ? Colors.white : AppColors.textTertiary, letterSpacing: 1.0)),
+                      ),
+                    ),
+                  )).toList(),
+                ),
+                const SizedBox(height: 24),
+                const Text('QUICK DATE RANGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                                 const SizedBox(height: 12),
                                 Wrap(
                                   spacing: 8, runSpacing: 8,
@@ -275,7 +333,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                   ]
                                 ),
                                 const SizedBox(height: 16),
-                                Text('Showing results from \${_startDate ?? 'the beginning'} to \${_endDate ?? 'today'}.', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                                Text('Showing results from ${_startDate ?? 'the beginning'} to ${_endDate ?? 'today'}.', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                               ],
                             ),
                           )
@@ -286,20 +344,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 ),
                 
                 // History List
-                if (_isFiltering)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.green),
-                          SizedBox(height: 16),
-                          Text('Analyzing History...', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      )
-                    ),
-                  )
-                else if (groupedHistory.isEmpty)
+                if (groupedHistory.isEmpty)
                    SliverFillRemaining(
                     child: Center(
                       child: Column(
@@ -307,9 +352,21 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         children: [
                           Container(width: 80, height: 80, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)), child: const Icon(LucideIcons.apple, size: 40, color: AppColors.textTertiary)),
                           const SizedBox(height: 24),
-                          const Text('No scans found', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          Text(scans.isEmpty ? 'No meals yet' : 'Nothing matches', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                           const SizedBox(height: 8),
-                          const Text('Start scanning your meals to build your history.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                          Text(scans.isEmpty ? 'Scan or log a meal to start your history.' : 'Try a different search or clear the filters.',
+                              textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                          if (scans.isNotEmpty && (_searchQuery.isNotEmpty || _startDate != null || _endDate != null || _selectedType != 'all' || _period != 'all')) ...[
+                            const SizedBox(height: 16),
+                            OutlinedButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                                _clearFilters();
+                              },
+                              child: const Text('Clear search and filters'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -332,7 +389,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                               child: InkWell(
                                 onTap: () {
                                   HapticFeedback.lightImpact();
-                                  context.push('/result/\${item.id}');
+                                  context.push('/result/${item.id}');
                                 },
                                 borderRadius: BorderRadius.circular(24),
                                 child: Container(
@@ -344,9 +401,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                         width: 64, height: 64,
                                         decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(16)),
                                         clipBehavior: Clip.hardEdge,
-                                        child: item.imageUrl != null 
-                                          ? Image.network(item.imageUrl!, fit: BoxFit.cover, errorBuilder: (c,e,s) => const Icon(LucideIcons.image, color: AppColors.textTertiary))
-                                          : const Icon(LucideIcons.image, color: AppColors.textTertiary),
+                                        child: ScanImage(path: item.imageUrl, cacheWidth: 200),
                                       ),
                                       const SizedBox(width: 16),
                                       Expanded(
@@ -354,13 +409,23 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(item.foodName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                            if (item.items.length > 1) ...[
+                                              const SizedBox(height: 2),
+                                              Text(item.itemsSummary, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                            ],
+                                            if (item.isFood) ...[
+                                              const SizedBox(height: 2),
+                                              Text('${item.calories} kcal',
+                                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                                            ],
                                             const SizedBox(height: 4),
                                             Row(
                                               children: [
                                                 if (item.type == 'food')
-                                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade100)), child: Text('\${item.calories} kcal', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade600)))
+                                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.green.shade100)), child: Text('${item.calories} kcal', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade600)))
                                                 else
-                                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade100)), child: Text('\${item.type?.toUpperCase() ?? "OTHER"}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade600, letterSpacing: 1.0))),
+                                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.shade100)), child: Text('${item.type?.toUpperCase() ?? "OTHER"}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade600, letterSpacing: 1.0))),
                                                 const SizedBox(width: 8),
                                                 Text(_formatTime(item.timestamp), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiary, letterSpacing: 1.0)),
                                               ],
@@ -385,18 +450,36 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     ],
                   );
                 }),
+                if (hasMore)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _visible += _pageSize),
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        child: Text('Show more (${allFiltered.length - filteredScans.length} older)'),
+                      ),
+                    ),
+                  ),
+                if (!hasMore && groupedHistory.isNotEmpty) const SliverToBoxAdapter(child: SizedBox(height: 32)),
               ],
             );
           },
           loading: () => const Center(child: CircularProgressIndicator(color: Colors.green)),
-          error: (err, stack) => Center(child: Text('Error: \$err')),
+          error: (err, stack) => Center(child: Text('Could not load your history.')),
         ),
       ),
     );
   }
 
-  Widget _buildFilterButton(IconData icon, bool isActive, VoidCallback onTap) {
-    return InkWell(
+  Widget _buildFilterButton(IconData icon, bool isActive, VoidCallback onTap, String label) {
+    return Semantics(
+      button: true,
+      selected: isActive,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -418,7 +501,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildQuickDate(String label, String Function() getStart) {
@@ -428,11 +511,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         setState(() {
           _startDate = getStart();
           _endDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-          _isFiltering = true;
-        });
-        _debounceTimer?.cancel();
-        _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-          if (mounted) setState(() => _isFiltering = false);
+          _visible = _pageSize;
         });
       },
       borderRadius: BorderRadius.circular(12),
@@ -451,5 +530,92 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     } catch (_) {
       return '';
     }
+  }
+}
+
+/// Every recorded workout, grouped by day. Only real workouts are listed.
+class _WorkoutHistory extends ConsumerStatefulWidget {
+  const _WorkoutHistory();
+
+  @override
+  ConsumerState<_WorkoutHistory> createState() => _WorkoutHistoryState();
+}
+
+class _WorkoutHistoryState extends ConsumerState<_WorkoutHistory> {
+  int _visible = 30;
+
+  @override
+  Widget build(BuildContext context) {
+    final async = ref.watch(allWorkoutsProvider);
+    return async.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: Colors.green)),
+      error: (_, __) => const Center(child: Text('Could not load your workouts.')),
+      data: (all) {
+        if (all.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: EmptyPanel(
+              icon: LucideIcons.dumbbell,
+              title: 'No workouts yet',
+              message: 'Workouts from Health Connect or ones you add in the Activity tab appear here.',
+            ),
+          );
+        }
+        final shown = all.take(_visible).toList();
+        final rows = <Widget>[];
+        String? lastDay;
+        for (final w in shown) {
+          final day = DateFormat('MMMM d, yyyy').format(w.start);
+          if (day != lastDay) {
+            rows.add(Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+              child: Text(day.toUpperCase(),
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 2.0)),
+            ));
+            lastDay = day;
+          }
+          final mins = w.end.difference(w.start).inMinutes;
+          final parts = <String>[
+            '$mins min',
+            if ((w.distanceMeters ?? 0) > 0) '${(w.distanceMeters! / 1000).toStringAsFixed(2)} km',
+            if ((w.calories ?? 0) > 0) '${w.calories!.round()} kcal${w.caloriesEstimated ? ' (est.)' : ''}',
+            if (w.avgHeartRate != null) '${w.avgHeartRate} bpm',
+          ];
+          rows.add(Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: IosCard(
+              semanticLabel: '${ActivityType.label(w.type)} at ${DateFormat('h:mm a').format(w.start)}, ${parts.join(', ')}',
+              child: ExcludeSemantics(
+                child: Row(children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(14)),
+                    child: Icon(LucideIcons.dumbbell, size: 20, color: Colors.purple.shade600),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${ActivityType.label(w.type)} · ${DateFormat('h:mm a').format(w.start)}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                      Text(parts.join('  ·  '), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                  SourceChip(DataSource.label(w.source)),
+                ]),
+              ),
+            ),
+          ));
+        }
+        if (all.length > shown.length) {
+          rows.add(OutlinedButton(
+            onPressed: () => setState(() => _visible += 30),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: Text('Show more (${all.length - shown.length} older)'),
+          ));
+        }
+        return ListView(padding: const EdgeInsets.fromLTRB(24, 0, 24, 32), children: rows);
+      },
+    );
   }
 }

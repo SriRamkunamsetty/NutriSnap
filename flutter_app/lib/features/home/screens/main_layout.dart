@@ -1,12 +1,14 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/unsaved_changes_provider.dart';
-import '../../../core/providers/connectivity_provider.dart';
 
 class MainLayout extends ConsumerWidget {
   final Widget child;
@@ -28,15 +30,14 @@ class MainLayout extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    if (index == 0) {
-      context.go(AppRoutes.home);
-    } else if (index == 1) {
-      context.go(AppRoutes.history);
-    } else if (index == 2) {
-      context.go(AppRoutes.analytics);
-    } else if (index == 3) {
-      context.go(AppRoutes.settings);
-    }
+    const paths = [
+      AppRoutes.home,
+      AppRoutes.history,
+      AppRoutes.activity,
+      AppRoutes.coach,
+      AppRoutes.settings,
+    ];
+    context.go(paths[index]);
   }
 
   Future<bool?> _showUnsavedChangesDialog(BuildContext context) {
@@ -79,142 +80,115 @@ class MainLayout extends ConsumerWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(AppRoutes.history)) {
-      return 1;
-    }
-    if (location.startsWith(AppRoutes.analytics)) {
-      return 2;
-    }
-    if (location.startsWith(AppRoutes.settings)) {
+    if (location.startsWith(AppRoutes.history)) return 1;
+    if (location.startsWith(AppRoutes.activity)) return 2;
+    if (location.startsWith(AppRoutes.coach) ||
+        location.startsWith(AppRoutes.chat) ||
+        location.startsWith(AppRoutes.analytics)) {
       return 3;
     }
+    if (location.startsWith(AppRoutes.settings)) return 4;
     return 0;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOnline = ref.watch(isOnlineProvider).valueOrNull ?? true;
-    final userState = ref.watch(userNotifierProvider);
-    final authUser = userState.authUser;
-    final isUnverified = authUser != null && !authUser.emailVerified && authUser.providerData.any((p) => p.providerId == 'password');
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          if (!isOnline)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              color: Colors.red.shade600,
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(LucideIcons.wifiOff, color: Colors.white, size: 14),
-                  SizedBox(width: 8),
-                  Text(
-                    'Offline Mode: Data will sync when reconnected',
-                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          if (isUnverified)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-              color: Colors.amber.shade50,
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.amber.shade200)),
-              ),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.alertCircle, color: Colors.amber.shade800, size: 16),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Please verify your email address to secure your account.',
-                      style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                       try {
-                         await ref.read(userNotifierProvider.notifier).sendEmailVerification();
-                         if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Verification email sent! Please check your inbox.')),
-                           );
-                         }
-                       } catch (e) {
-                         if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             SnackBar(content: Text('Error: $e')),
-                           );
-                         }
-                       }
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      'Resend',
-                      style: TextStyle(color: Colors.amber.shade900, fontSize: 12, fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: const Border(
-            top: BorderSide(color: AppColors.border, width: 1.0),
+      bottomNavigationBar: _IosTabBar(
+        currentIndex: _calculateSelectedIndex(context),
+        onTap: (i) => _onItemTapped(context, ref, i),
+      ),
+    );
+  }
+}
+
+/// Frosted, Apple-style tab bar with generous 48-pt targets and labels that
+/// never rely on colour alone.
+class _IosTabBar extends StatelessWidget {
+  const _IosTabBar({required this.currentIndex, required this.onTap});
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  static const _items = [
+    (LucideIcons.house, 'Home'),
+    (LucideIcons.clock, 'History'),
+    (LucideIcons.footprints, 'Activity'),
+    (LucideIcons.sparkles, 'Coach'),
+    (LucideIcons.settings, 'Settings'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.86),
+            border: const Border(top: BorderSide(color: AppColors.border)),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            )
-          ]
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: BottomNavigationBar(
-              currentIndex: _calculateSelectedIndex(context),
-              onTap: (index) => _onItemTapped(context, ref, index),
-              backgroundColor: Colors.white,
-              elevation: 0,
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: Colors.green.shade600,
-              unselectedItemColor: AppColors.textTertiary,
-              selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-              unselectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(LucideIcons.home)),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(LucideIcons.clock)),
-                  label: 'History',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(LucideIcons.activity)),
-                  label: 'Analytics',
-                ),
-                BottomNavigationBarItem(
-                  icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(LucideIcons.settings)),
-                  label: 'Settings',
-                ),
-              ],
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              child: Row(
+                children: [
+                  for (var i = 0; i < _items.length; i++)
+                    Expanded(
+                      child: Semantics(
+                        button: true,
+                        selected: i == currentIndex,
+                        label: _items[i].$2,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            onTap(i);
+                          },
+                          child: ExcludeSemantics(
+                            child: SizedBox(
+                              height: 52,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeOutCubic,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: i == currentIndex ? Colors.green.shade50 : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(
+                                      _items[i].$1,
+                                      size: 21,
+                                      color: i == currentIndex ? Colors.green.shade700 : AppColors.textTertiary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _items[i].$2,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: i == currentIndex ? FontWeight.w800 : FontWeight.w600,
+                                      color: i == currentIndex ? Colors.green.shade700 : AppColors.textTertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

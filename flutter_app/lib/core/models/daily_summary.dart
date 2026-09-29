@@ -1,12 +1,14 @@
 import 'package:equatable/equatable.dart';
 
+/// Totals for one local calendar day. Derived from scans + water rows; it is
+/// never stored, so it can not drift out of sync with the meal log.
 class DailySummary extends Equatable {
-  final String date;
+  final String date; // yyyy-MM-dd (device local time)
   final int totalCalories;
   final int totalProtein;
   final int totalCarbs;
   final int totalFats;
-  final int totalWater;
+  final int totalWater; // ml
 
   const DailySummary({
     required this.date,
@@ -17,17 +19,53 @@ class DailySummary extends Equatable {
     required this.totalWater,
   });
 
+  factory DailySummary.empty(String date) => DailySummary(
+        date: date,
+        totalCalories: 0,
+        totalProtein: 0,
+        totalCarbs: 0,
+        totalFats: 0,
+        totalWater: 0,
+      );
+
   factory DailySummary.fromMap(Map<String, dynamic> map) {
+    int i(dynamic v) => (v as num?)?.round() ?? 0;
     return DailySummary(
-      date: map['date'] ?? '',
-      totalCalories: map['totalCalories']?.toInt() ?? 0,
-      totalProtein: map['totalProtein']?.toInt() ?? 0,
-      totalCarbs: map['totalCarbs']?.toInt() ?? 0,
-      totalFats: map['totalFats']?.toInt() ?? 0,
-      totalWater: map['totalWater']?.toInt() ?? 0,
+      date: map['date'] as String? ?? '',
+      totalCalories: i(map['totalCalories']),
+      totalProtein: i(map['totalProtein']),
+      totalCarbs: i(map['totalCarbs']),
+      totalFats: i(map['totalFats']),
+      totalWater: i(map['totalWater']),
     );
   }
 
+  Map<String, dynamic> toMap() => {
+        'date': date,
+        'totalCalories': totalCalories,
+        'totalProtein': totalProtein,
+        'totalCarbs': totalCarbs,
+        'totalFats': totalFats,
+        'totalWater': totalWater,
+      };
+
+  DailySummary copyWith({
+    int? totalCalories,
+    int? totalProtein,
+    int? totalCarbs,
+    int? totalFats,
+    int? totalWater,
+  }) =>
+      DailySummary(
+        date: date,
+        totalCalories: totalCalories ?? this.totalCalories,
+        totalProtein: totalProtein ?? this.totalProtein,
+        totalCarbs: totalCarbs ?? this.totalCarbs,
+        totalFats: totalFats ?? this.totalFats,
+        totalWater: totalWater ?? this.totalWater,
+      );
+
   @override
-  List<Object?> get props => [date, totalCalories, totalProtein, totalCarbs, totalFats, totalWater];
+  List<Object?> get props =>
+      [date, totalCalories, totalProtein, totalCarbs, totalFats, totalWater];
 }

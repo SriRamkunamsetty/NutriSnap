@@ -1,13 +1,12 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/models/scan_result.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/models/daily_summary.dart';
 import '../../../core/enums/app_enums.dart';
-import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/ui_feedback.dart';
 
@@ -252,7 +251,7 @@ class _HealthyFoodSuggestionsState extends ConsumerState<HealthyFoodSuggestions>
   }
 
   void _logSuggestedItem(HealthyFoodItem item, {double multiplier = 1.0}) {
-    UiFeedback.medium();
+    UIFeedback.medium();
     final scan = ScanResult(
       id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
       userId: widget.profile?.uid ?? '',
@@ -385,9 +384,9 @@ class _HealthyFoodSuggestionsState extends ConsumerState<HealthyFoodSuggestions>
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceMuted.withOpacity(0.5),
+                    color: AppColors.surfaceMuted.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.black.withOpacity(0.04)),
+                    border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
                   ),
                   child: Row(
                     children: [
@@ -400,7 +399,7 @@ class _HealthyFoodSuggestionsState extends ConsumerState<HealthyFoodSuggestions>
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -478,7 +477,7 @@ class _HealthyFoodSuggestionsState extends ConsumerState<HealthyFoodSuggestions>
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.2),
+                                color: AppColors.primary.withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -516,7 +515,7 @@ class _HealthyFoodSuggestionsState extends ConsumerState<HealthyFoodSuggestions>
     final bool isSelected = _selectedFilter == key;
     return InkWell(
       onTap: () {
-        UiFeedback.selection();
+        UIFeedback.selection();
         setState(() => _selectedFilter = key);
       },
       borderRadius: BorderRadius.circular(20),
@@ -659,7 +658,7 @@ class _HealthyItemDetailSheetState extends State<_HealthyItemDetailSheet> {
                     final bool isCur = _portionMultiplier == m;
                     return InkWell(
                       onTap: () {
-                        UiFeedback.selection();
+                        UIFeedback.selection();
                         setState(() => _portionMultiplier = m);
                       },
                       borderRadius: BorderRadius.circular(12),

@@ -1,17 +1,22 @@
-import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/models/scan_result.dart';
 import '../../../core/models/user_profile.dart';
-import '../../../core/services/storage_service.dart';
+import '../../../core/providers/app_providers.dart';
+import '../../../core/utils/datetime_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/user_provider.dart';
+import '../../coach/widgets/improvements_section.dart';
+import '../../coach/widgets/trends_section.dart';
 
 class _WeeklyData {
   final String name;
@@ -58,17 +63,31 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     HapticFeedback.mediumImpact();
 
     try {
-      // Simulate PDF generation since package isn't present
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() {
-        _showReportSuccess = true;
-      });
+      final scans = await ref.read(scanRepositoryProvider).all();
+      final csv = StringBuffer('date,time,meal,calories,protein_g,carbs_g,fats_g,confidence\n');
+      for (final s in scans.where((s) => s.calories > 0 || s.type == 'food')) {
+        final at = DateTime.tryParse(s.timestamp) ?? DateTime.now();
+        final name = '"${s.foodName.replaceAll('"', '""')}"';
+        csv.writeln('${DateTimeUtils.dayKey(at)},${DateFormat('HH:mm').format(at)},$name,'
+            '${s.calories},${s.protein},${s.carbs},${s.fats},${s.confidence.toStringAsFixed(2)}');
+      }
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/nutrisnap-meals-${DateTimeUtils.today()}.csv');
+      await file.writeAsString(csv.toString(), flush: true);
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: 'text/csv')],
+        subject: 'NutriSnap meal log',
+      ));
+      if (!mounted) return;
+      setState(() => _showReportSuccess = true);
       HapticFeedback.lightImpact();
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _showReportSuccess = false);
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to generate report.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not export your meal log.')));
+      }
     } finally {
       if (mounted) setState(() => _isGeneratingReport = false);
     }
@@ -137,9 +156,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final weeklyData = _getWeeklyData(scansSync);
     final bodyFatData = _getBodyFatData(scansSync);
 
-    final calorieProgress = profile != null && profile.calorieLimit > 0
-        ? (dailySummarySync?.totalCalories ?? 0) / profile.calorieLimit
-        : 0.0;
+    final calorieLimit = profile?.calorieLimit ?? 0;
+    final calorieProgress =
+        calorieLimit > 0 ? (dailySummarySync?.totalCalories ?? 0) / calorieLimit : 0.0;
     final waterProgress = profile != null && profile.waterGoal != null && profile.waterGoal! > 0
         ? (dailySummarySync?.totalWater ?? 0) / profile.waterGoal!
         : 0.0;
@@ -192,6 +211,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                const ImprovementsSection(),
+                const TrendsSection(),
+
                  // Body Fat Trend Chart
                 _buildBodyFatTrendCard(bodyFatData),
                 const SizedBox(height: 32),
@@ -212,10 +234,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 _buildCalorieBalanceCard(dailySummarySync, profile, calorieProgress),
                 const SizedBox(height: 32),
                 _buildHydrationProgressCard(dailySummarySync, profile, waterProgress),
-                const SizedBox(height: 32),
-
-                // AI Insights
-                _buildInsightsCard(dailySummarySync, calorieProgress),
               ],
             ),
           ),
@@ -229,7 +247,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(16)),
                 child: Row(
                   children: [
-                    Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.fileText, color: Colors.white, size: 18)),
+                    Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)), child: const Icon(LucideIcons.fileText, color: Colors.white, size: 18)),
                     const SizedBox(width: 12),
                     const Text('Report downloaded successfully', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                   ],
@@ -244,7 +262,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildBodyFatTrendCard(List<_FatData> data) {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -267,7 +285,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(data.isNotEmpty ? '\${data.last.fat}%' : '--%', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.purple.shade600, letterSpacing: -1.0)),
+                  Text(data.isNotEmpty ? '${data.last.fat}%' : '--%', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.purple.shade600, letterSpacing: -1.0)),
                   const Text('CURRENT EST.', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.0)),
                 ],
               ),
@@ -316,7 +334,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       dotData: const FlDotData(show: false),
                       belowBarData: BarAreaData(
                         show: true,
-                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.purple.shade500.withOpacity(0.3), Colors.purple.shade500.withOpacity(0.0)]),
+                        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.purple.shade500.withValues(alpha: 0.3), Colors.purple.shade500.withValues(alpha: 0.0)]),
                       ),
                     ),
                   ],
@@ -346,7 +364,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildDailySummaryCard(dailySummary, UserProfile? profile) {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.green.shade500, Colors.green.shade600]), borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.green.shade500.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))]),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.green.shade500, Colors.green.shade600]), borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.green.shade500.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))]),
       child: Column(
         children: [
           Row(
@@ -359,7 +377,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   const Text('DAILY SUMMARY', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                 ],
               ),
-              Text(DateFormat('EEEE, MMM d').format(DateTime.now()).toUpperCase(), style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+              Text(DateFormat('EEEE, MMM d').format(DateTime.now()).toUpperCase(), style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
             ],
           ),
           const SizedBox(height: 32),
@@ -369,14 +387,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('CALORIES', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                    Text('CALORIES', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text('\${dailySummary?.totalCalories ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                        Text('${dailySummary?.totalCalories ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
                         const SizedBox(width: 4),
-                        Text('/ \${profile?.calorieLimit ?? 2000} kcal', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('/ ${profile?.calorieLimit ?? 2000} kcal', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -386,14 +404,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('WATER', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+                    Text('WATER', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        Text('\${dailySummary?.totalWater ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                        Text('${dailySummary?.totalWater ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
                         const SizedBox(width: 4),
-                        Text('/ \${profile?.waterGoal ?? 2500} ml', style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text('/ ${profile?.waterGoal ?? 2500} ml', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ],
@@ -407,9 +425,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroStat('PROTEIN', '\${dailySummary?.totalProtein ?? 0}g'),
-              _buildMacroStat('CARBS', '\${dailySummary?.totalCarbs ?? 0}g'),
-              _buildMacroStat('FATS', '\${dailySummary?.totalFats ?? 0}g'),
+              _buildMacroStat('PROTEIN', '${dailySummary?.totalProtein ?? 0}g'),
+              _buildMacroStat('CARBS', '${dailySummary?.totalCarbs ?? 0}g'),
+              _buildMacroStat('FATS', '${dailySummary?.totalFats ?? 0}g'),
             ],
           ),
         ],
@@ -420,7 +438,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildMacroStat(String label, String value) {
     return Column(
       children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
       ],
@@ -428,12 +446,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildWeeklyTrendsChart(List<_WeeklyData> data, UserProfile? profile) {
-    double maxCalories = data.fold(0, (max, e) => e.calories > max ? e.calories : max);
+    double maxCalories = data.fold<double>(0, (max, e) => e.calories > max ? e.calories.toDouble() : max);
     if (maxCalories == 0) maxCalories = 2000;
     
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         children: [
           Row(
@@ -508,7 +526,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     );
                   }).toList(),
                ),
-              duration: const Duration(milliseconds: 1000),
             ),
           ),
         ],
@@ -519,7 +536,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildMacroProgressChart(List<_WeeklyData> data, UserProfile? profile) {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         children: [
           Row(
@@ -605,7 +622,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildCalorieBalanceCard(dailySummary, UserProfile? profile, double progress) {
     return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         children: [
           Row(
@@ -643,7 +660,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('\${dailySummary?.totalCalories ?? 0}', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -2.0)),
+                      Text('${dailySummary?.totalCalories ?? 0}', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -2.0)),
                       const Text('CONSUMED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 2.0)),
                     ],
                   ),
@@ -659,7 +676,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   children: [
                     const Text('GOAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                     const SizedBox(height: 4),
-                    Text('\${profile?.calorieLimit ?? 2000}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                    Text('${profile?.calorieLimit ?? 2000}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
                   ],
                 ),
               ),
@@ -670,7 +687,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     const Text('REMAINING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                     const SizedBox(height: 4),
                     Text(
-                      '\${((profile?.calorieLimit ?? 2000) - (dailySummary?.totalCalories ?? 0)).clamp(0, 9999)}', 
+                      '${((profile?.calorieLimit ?? 2000) - (dailySummary?.totalCalories ?? 0)).clamp(0, 9999)}', 
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: ((profile?.calorieLimit ?? 2000) - (dailySummary?.totalCalories ?? 0)) < 0 ? Colors.red.shade500 : Colors.green.shade600)
                     ),
                   ],
@@ -686,7 +703,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildHydrationProgressCard(dailySummary, UserProfile? profile, double progress) {
      return Container(
       padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), border: Border.all(color: AppColors.border), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))]),
       child: Column(
         children: [
           Row(
@@ -723,7 +740,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('\${dailySummary?.totalWater ?? 0}', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -2.0)),
+                      Text('${dailySummary?.totalWater ?? 0}', style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -2.0)),
                       const Text('ML CONSUMED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 2.0)),
                     ],
                   ),
@@ -739,7 +756,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   children: [
                     const Text('GOAL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                     const SizedBox(height: 4),
-                    Text('\${profile?.waterGoal ?? 2500}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                    Text('${profile?.waterGoal ?? 2500}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
                   ],
                 ),
               ),
@@ -750,7 +767,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     const Text('REMAINING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textTertiary, letterSpacing: 1.5)),
                     const SizedBox(height: 4),
                     Text(
-                      '\${((profile?.waterGoal ?? 2500) - (dailySummary?.totalWater ?? 0)).clamp(0, 9999)}', 
+                      '${((profile?.waterGoal ?? 2500) - (dailySummary?.totalWater ?? 0)).clamp(0, 9999)}', 
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.blue.shade600)
                     ),
                   ],
@@ -760,62 +777,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           )
         ],
       )
-    );
-  }
-
-  Widget _buildInsightsCard(dailySummary, double calorieProgress) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(48), border: Border.all(color: const Color(0xFF1E293B))),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.green.shade500.withOpacity(0.2), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green.shade500.withOpacity(0.2))), child: Icon(LucideIcons.sparkles, color: Colors.green.shade400, size: 20)),
-              const SizedBox(width: 12),
-              const Text('AI Health Insights', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
-            ],
-          ),
-          const SizedBox(height: 32),
-          _buildInsightRow(
-            Colors.green.shade500, 
-            calorieProgress > 0.8 
-              ? "You're approaching your calorie limit. Opt for high-volume, low-calorie snacks like cucumber or berries."
-              : "Excellent pace! You're perfectly aligned with your daily calorie targets."
-          ),
-          const SizedBox(height: 24),
-          _buildInsightRow(
-            Colors.blue.shade500, 
-            (dailySummary?.totalProtein ?? 0) < 50 
-              ? "Protein intake is slightly behind. Consider a Greek yogurt or protein shake to recover."
-              : "Protein levels are optimal. This is great for muscle maintenance and satiety."
-          ),
-          const SizedBox(height: 32),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white.withOpacity(0.1))),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('VIEW DETAILED REPORT', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.5)),
-                const SizedBox(width: 12),
-                Icon(LucideIcons.chevronRight, color: Colors.white, size: 18),
-              ],
-            ),
-          )
-        ],
-      )
-    );
-  }
-
-  Widget _buildInsightRow(Color color, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(width: 6, height: 6, margin: const EdgeInsets.only(top: 8), decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 16),
-        Expanded(child: Text(text, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 16, height: 1.5, fontWeight: FontWeight.w600))),
-      ],
     );
   }
 }
